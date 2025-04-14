@@ -29,13 +29,7 @@ export default function RootLayout({
       >
         {/* Site Header */}
         <header className="bg-white shadow-sm p-4 flex justify-between items-center">
-          <h1 className="text-xl font-bold">Recipe Keeper</h1>
-          <a
-            href="/auth/sign-in"
-            className="text-blue-600 hover:text-blue-800 transition"
-          >
-            Sign In
-          </a>
+          <h1 className="text-xl font-bold text-pink-500 tracking-tight">Recipe Keeper 🍳</h1>
         </header>
 
         {/* Main content area */}

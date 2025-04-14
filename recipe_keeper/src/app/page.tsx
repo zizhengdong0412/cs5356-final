@@ -13,7 +13,7 @@ export default function Home() {
         className="mb-4"
       />
 
-      {/* Hero */}
+      {/* Main Message */}
       <h1 className="text-3xl sm:text-5xl font-bold text-center max-w-2xl leading-tight">
         Organize Your Favorite Recipes Effortlessly
       </h1>
