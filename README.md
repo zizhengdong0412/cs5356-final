@@ -11,11 +11,10 @@ Now it is time to put all these new tools to use to build something! ✨
 
 ## Project Links
 
-**Deployed Project:** cs5356-final-zeta.vercel.app
-**Source Code:** [Insert GitHub repo link here]
+- **Deployed Project:** cs5356-final-zeta.vercel.app
+- **Source Code:** https://github.com/zizhengdong0412/cs5356-final
 
 ## Idea  
-[Briefly describe your project's idea or goal.]
 For now, we're creating a "Social Recipe Binders"
 A Next.js full-stack web app that allows users to sign up and sign in
 Users can create Recipe Binders, which contain many Recipes.
