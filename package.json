@@ -1,5 +1,6 @@
 {
   "dependencies": {
-    "better-auth": "^1.2.7"
+    "better-auth": "^1.2.7",
+    "framer-motion": "^12.7.2"
   }
 }
