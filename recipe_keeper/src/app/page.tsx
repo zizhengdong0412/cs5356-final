@@ -5,13 +5,7 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen items-center justify-center px-6 py-12 sm:px-12 bg-gray-50 font-[var(--font-geist-sans)] text-gray-800">
       {/* Logo */}
-      <Image
-        src="/logo.jpg" 
-        alt="Recipe Keeper Logo"
-        width={30}
-        height={30}
-        className="mb-4"
-      />
+      <Image src="/logo.jpg" alt="Recipe Keeper Logo" />
 
       {/* Main Message */}
       <h1 className="text-3xl sm:text-5xl font-bold text-center max-w-2xl leading-tight">
@@ -38,8 +32,8 @@ export default function Home() {
         </Link>
       </div>
 
-      {/* Feature "Big Picture" */}
-      <div className="mt-16 grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-4xl w-full">
+      {/* Feature for App */}
+      <section className="mt-16 grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-4xl w-full" aria-label="App Features">
         <div className="p-6 bg-white rounded-xl shadow hover:shadow-lg transition">
           <h3 className="text-lg font-semibold mb-2">Recipe Binders</h3>
           <p className="text-sm text-gray-600">
@@ -52,7 +46,7 @@ export default function Home() {
             Add ingredients with specific units and quantities. We’ll make shopping lists easy later.
           </p>
         </div>
-      </div>
+      </section>
 
       {/* Footers */}
       <footer className="mt-16 text-xs text-gray-400 text-center">
