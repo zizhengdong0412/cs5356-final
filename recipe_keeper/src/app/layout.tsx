@@ -1,17 +1,12 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Pacifico, Inter } from 'next/font/google'
+import { Pacifico } from 'next/font/google'
 
 const pacifico = Pacifico({
   weight: '400',
   subsets: ['latin'],
   variable: '--font-pacifico',
-})
-
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
 })
 
 const geistSans = Geist({
@@ -36,7 +31,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${pacifico.variable} ${inter.variable} bg-gray-50 text-gray-900 font-[var(--font-inter)]`}>
+      <body className={`${pacifico.variable} bg-gray-50 text-gray-900 font-[var(--font-inter)]`}>
         {/* Site Header */}
         <header className="bg-white shadow-sm p-4 flex justify-between items-center">
           <h1 className="text-xl font-bold text-pink-500 tracking-tight">Recipe Keeper 🍳</h1>
