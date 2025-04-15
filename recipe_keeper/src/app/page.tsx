@@ -42,7 +42,7 @@ export default function Home() {
       >
         <Link
           href="/dashboard"
-          className="bg-blue-600 hover:bg-blue-700 text-white text-sm sm:text-base px-6 py-3 rounded-full transition font-medium text-center"
+          className="bg-blue-600 text-white text-sm sm:text-base px-6 py-3 rounded-full font-medium text-center animate-pulseOnce"
         >
           Explore My Binders
         </Link>
