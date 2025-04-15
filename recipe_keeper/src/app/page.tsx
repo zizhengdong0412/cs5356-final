@@ -1,3 +1,5 @@
+'use client'
+
 import Image from "next/image";
 import Link from 'next/link';
 import { motion } from "framer-motion";
@@ -12,7 +14,7 @@ export default function Home() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
       >
-      <Image src="/logo.jpg" alt="Recipe Keeper Logo" />
+      <Image src="/logo.jpg" alt="Recipe Keeper Logo" width={40} height={40} />
       </motion.div>
 
       {/* Main Message */}
@@ -24,18 +26,20 @@ export default function Home() {
         Organize Your Favorite Recipes Effortlessly
       </motion.h1>
 
-      <motion.p className="text-gray-600 text-center max-w-xl mt-4 text-base sm:text-lg">
-        Create binders, save ingredients, and build your personal recipe collection. Anytime, anywhere.
+      <motion.p className="text-gray-600 text-center max-w-xl mt-4 text-base sm:text-lg"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.7, delay: 0.4 }}
+      >
+        Create binders, save ingredients, and build your personal recipe collection. Anytime, anywhere.
       </motion.p>
 
       {/* Buttons */}
-      <motion.div className="mt-8 flex flex-col sm:flex-row gap-4">
+      <motion.div className="mt-8 flex flex-col sm:flex-row gap-4"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.6 }}
+      >
         <Link
           href="/dashboard"
           className="bg-blue-600 hover:bg-blue-700 text-white text-sm sm:text-base px-6 py-3 rounded-full transition font-medium text-center"
