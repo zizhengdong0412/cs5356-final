@@ -3,8 +3,21 @@
 import Image from "next/image";
 import Link from 'next/link';
 import { motion } from "framer-motion";
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { authClient } from "@/lib/auth-client"
 
 export default function Home() {
+  const router = useRouter()
+  const [user, setUser] = useState(authClient.getUser())
+  useEffect(() => {
+    setUser(authClient.getUser())
+  }, [])
+
+  const handleSignOut = async () => {
+    await authClient.signOut()
+    router.refresh() 
+  }
   return (
     <div className="flex flex-col min-h-screen items-center justify-center px-6 py-12 sm:px-12 bg-gray-50 font-[var(--font-geist-sans)] text-gray-800">
       
