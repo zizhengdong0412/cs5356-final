@@ -41,10 +41,10 @@ export default function Home() {
         transition={{ duration: 0.6, delay: 0.6 }}
       >
         <Link
-          href="/auth/sign-up"
+          href="/dashboard"
           className="bg-blue-600 text-white text-sm sm:text-base px-6 py-3 rounded-full font-medium text-center animate-pulseOnce"
         >
-          Sign Up
+          Explore My Binders
         </Link>
         <Link
           href="/auth/sign-in"
@@ -59,13 +59,13 @@ export default function Home() {
         <div className="p-6 bg-white rounded-xl shadow hover:shadow-lg transition">
           <h3 className="text-lg font-semibold mb-2">Recipe Binders</h3>
           <p className="text-sm text-gray-600">
-            Organize your recipes into personalized collections — like "Holiday Favorites" or "Quick Weeknight Meals".
+            Organize your recipes into personalized collections — like “Holiday Favorites” or “Quick Weeknight Meals”.
           </p>
         </div>
         <div className="p-6 bg-white rounded-xl shadow hover:shadow-lg transition">
           <h3 className="text-lg font-semibold mb-2">Smart Ingredient Lists</h3>
           <p className="text-sm text-gray-600">
-            Add ingredients with specific units and quantities. We'll make shopping lists easy later.
+            Add ingredients with specific units and quantities. We’ll make shopping lists easy later.
           </p>
         </div>
       </section>
