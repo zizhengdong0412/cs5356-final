@@ -9,7 +9,7 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'dailydishrecipes.com',
+        hostname: 'www.themealdb.com',
       },
     ],
   },

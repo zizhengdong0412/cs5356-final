@@ -7,9 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "db:generate": "drizzle-kit generate",
-    "db:push": "drizzle-kit push",
-    "db:migrate": "tsx src/lib/migrate.ts"
+    "migrate": "tsx src/lib/migrate.ts",
+    "migrate:reset": "tsx src/lib/migrate.ts --reset"
   },
   "dependencies": {
     "@types/uuid": "^10.0.0",
