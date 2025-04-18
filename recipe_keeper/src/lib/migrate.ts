@@ -1,10 +1,12 @@
 import * as dotenv from 'dotenv';
 dotenv.config({ path: '.env' });
 
-import { drizzle } from "drizzle-orm/postgres-js";
-import { migrate } from "drizzle-orm/postgres-js/migrator";
-import postgres from "postgres";
-import * as schema from "./schema";
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
+import * as schema from './schema';
+import bcrypt from 'bcryptjs';
+
+const isDevelopment = process.env.NODE_ENV !== 'production';
 
 // For migrations
 async function main() {
@@ -21,44 +23,78 @@ async function main() {
   const db = drizzle(connection, { schema });
 
   try {
-    console.log("Creating database schema...");
+    // Enable UUID extension
+    await connection`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
     
-    // Create users table if it doesn't exist
+    // In development mode, we can reset the database
+    if (isDevelopment) {
+      const shouldReset = process.argv.includes('--reset');
+      
+      if (shouldReset) {
+        console.log("⚠️ DEVELOPMENT MODE: Dropping existing tables...");
+        await connection`DROP TABLE IF EXISTS recipes CASCADE`;
+        await connection`DROP TABLE IF EXISTS sessions CASCADE`;
+        await connection`DROP TABLE IF EXISTS users CASCADE`;
+      }
+    } else {
+      console.log("PRODUCTION MODE: Not dropping any tables for safety");
+    }
+    
+    console.log("Creating tables if they don't exist...");
+    
+    // Create users table
     await connection`
       CREATE TABLE IF NOT EXISTS users (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
         email TEXT NOT NULL UNIQUE,
         name TEXT,
         password TEXT NOT NULL,
-        email_verified TEXT,
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW()
+        email_verified BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
       )
     `;
     
-    // Create sessions table if it doesn't exist
+    // Create sessions table
     await connection`
       CREATE TABLE IF NOT EXISTS sessions (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
         user_id UUID NOT NULL REFERENCES users(id),
         expires_at TIMESTAMP NOT NULL,
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW()
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
       )
     `;
     
-    console.log("Tables created successfully!");
+    // Create recipes table
+    await connection`
+      CREATE TABLE IF NOT EXISTS recipes (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id UUID NOT NULL REFERENCES users(id),
+        title TEXT NOT NULL,
+        description TEXT,
+        ingredients TEXT NOT NULL,
+        instructions TEXT NOT NULL,
+        cooking_time INTEGER,
+        servings INTEGER,
+        type TEXT NOT NULL,
+        thumbnail TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+      )
+    `;
     
-    console.log("Adding test user...");
-    // Insert a test user
-    await db.insert(schema.users).values({
-      id: crypto.randomUUID(),
-      email: "test@example.com",
-      password: "$2a$12$qr1FjPLyQYx4m7fgdD7iKO0s29zLLGHSJtGDG8IbHFn4BxhAZGW/W", // password is "password123"
-      name: "Test User",
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }).onConflictDoNothing();
+    // Only create test account in development mode
+    if (isDevelopment) {
+      console.log("Creating test account for development...");
+      const hashedPassword = await bcrypt.hash('testpass123', 10);
+      await db.insert(schema.users).values({
+        email: "test@example.com",
+        password: hashedPassword,
+        name: "Test User",
+        emailVerified: true
+      }).onConflictDoNothing();
+    }
     
     console.log("Migration completed successfully!");
   } catch (error) {
@@ -69,7 +105,13 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error("Migration script failed:", err);
-  process.exit(1);
-}); 
+// If this script is run directly
+if (require.main === module) {
+  main().catch((err) => {
+    console.error("Migration script failed:", err);
+    process.exit(1);
+  });
+}
+
+// Export the migration function for programmatic use
+export default main; 
