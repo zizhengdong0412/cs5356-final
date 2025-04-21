@@ -16,15 +16,10 @@
       "static/chunks/main-app.js",
       "static/chunks/app/notes/[id]/page.js"
     ],
-    "/auth/sign-in/page": [
+    "/shared/[code]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/auth/sign-in/page.js"
-    ],
-    "/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/page.js"
+      "static/chunks/app/shared/[code]/page.js"
     ]
   }
 }
