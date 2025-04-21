@@ -1,1 +1,7 @@
-{}
+{
+  "/auth/sign-in/page": "app/auth/sign-in/page.js",
+  "/auth/sign-up/page": "app/auth/sign-up/page.js",
+  "/api/client-auth/[...action]/route": "app/api/client-auth/[...action]/route.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/api/recipes/route": "app/api/recipes/route.js"
+}
