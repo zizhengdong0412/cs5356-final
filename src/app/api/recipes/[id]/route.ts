@@ -4,6 +4,7 @@ import { recipes } from '@/lib/schema';
 import { authClient } from '@/lib/auth-client';
 import { eq, and } from 'drizzle-orm';
 import { sendEmail } from '@/lib/email'; // 👈 Added SendGrid utility
+import { validateSessionFromCookie } from '@/lib/server-auth-helper';
 
 // Get a single recipe by ID
 export async function GET(
@@ -11,8 +12,10 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { data: session } = await authClient.getSession();
-    if (!session) {
+    // 使用服务端 session 验证方式，更可靠
+    const { isAuthenticated, user } = await validateSessionFromCookie();
+    
+    if (!isAuthenticated || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -21,13 +24,21 @@ export async function GET(
       return NextResponse.json({ error: 'Recipe ID is required' }, { status: 400 });
     }
 
+    // 确保 user.id 存在
+    if (!user.id) {
+      console.error('User id is missing in the session');
+      return NextResponse.json({ error: 'User session is invalid' }, { status: 401 });
+    }
+
+    console.log(`Fetching recipe ${recipeId} for user ${user.id}`);
+
     const recipe = await db
       .select()
       .from(recipes)
       .where(
         and(
           eq(recipes.id, recipeId),
-          eq(recipes.user_id, session.user.id)
+          eq(recipes.user_id, user.id)
         )
       )
       .limit(1);
@@ -52,8 +63,10 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { data: session } = await authClient.getSession();
-    if (!session) {
+    // 使用服务端 session 验证方式
+    const { isAuthenticated, user } = await validateSessionFromCookie();
+    
+    if (!isAuthenticated || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -69,7 +82,7 @@ export async function PUT(
       .where(
         and(
           eq(recipes.id, recipeId),
-          eq(recipes.user_id, session.user.id)
+          eq(recipes.user_id, user.id)
         )
       )
       .limit(1);
@@ -79,7 +92,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { title, description, ingredients, instructions, cookingTime, servings } = body;
+    const { title, description, ingredients, instructions, cookingTime, servings, type } = body;
 
     if (!title || !ingredients || !instructions) {
       return NextResponse.json(
@@ -97,22 +110,31 @@ export async function PUT(
         instructions,
         cooking_time: cookingTime ? parseInt(cookingTime) : null,
         servings: servings ? parseInt(servings) : null,
+        type: type || 'personal', // Ensure type is updated
         updated_at: new Date(),
       })
       .where(
         and(
           eq(recipes.id, recipeId),
-          eq(recipes.user_id, session.user.id)
+          eq(recipes.user_id, user.id)
         )
       )
       .returning();
 
-    // ✅ Send Email Notification
-    await sendEmail({
-      to: session.user.email,
-      subject: "🍳 Recipe Updated!",
-      text: `Your recipe "${title}" was updated successfully.`,
-    });
+    // Try to send email but don't block if it fails
+    try {
+      // Only send email if SENDGRID_API_KEY is configured
+      if (process.env.SENDGRID_API_KEY) {
+        await sendEmail({
+          to: user.email,
+          subject: "🍳 Recipe Updated!",
+          text: `Your recipe "${title}" was updated successfully.`,
+        });
+      }
+    } catch (emailError) {
+      console.error('Error sending email notification:', emailError);
+      // Don't fail the request due to email error
+    }
 
     return NextResponse.json(updatedRecipe[0]);
   } catch (error) {
@@ -130,8 +152,10 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { data: session } = await authClient.getSession();
-    if (!session) {
+    // 使用服务端 session 验证方式
+    const { isAuthenticated, user } = await validateSessionFromCookie();
+    
+    if (!isAuthenticated || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -145,7 +169,7 @@ export async function DELETE(
       .where(
         and(
           eq(recipes.id, recipeId),
-          eq(recipes.user_id, session.user.id)
+          eq(recipes.user_id, user.id)
         )
       )
       .returning();
@@ -154,12 +178,20 @@ export async function DELETE(
       return NextResponse.json({ error: 'Recipe not found or not authorized to delete' }, { status: 404 });
     }
 
-    // ✅ Send Email Notification
-    await sendEmail({
-      to: session.user.email,
-      subject: "🗑️ Recipe Deleted",
-      text: `Your recipe "${deletedRecipe[0].title}" has been deleted.`,
-    });
+    // Try to send email but don't block if it fails
+    try {
+      // Only send email if SENDGRID_API_KEY is configured
+      if (process.env.SENDGRID_API_KEY) {
+        await sendEmail({
+          to: user.email,
+          subject: "🗑️ Recipe Deleted",
+          text: `Your recipe "${deletedRecipe[0].title}" has been deleted.`,
+        });
+      }
+    } catch (emailError) {
+      console.error('Error sending email notification:', emailError);
+      // Don't fail the request due to email error
+    }
 
     return NextResponse.json({ message: 'Recipe deleted successfully' });
   } catch (error) {

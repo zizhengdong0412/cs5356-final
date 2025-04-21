@@ -179,32 +179,37 @@ export default function Dashboard() {
               <h2 className="text-2xl font-bold text-gray-900 mb-6">My Notes</h2>
               <div className="bg-white shadow rounded-lg divide-y divide-gray-200">
                 {savedRecipes.map((recipe) => (
-                  <div
+                  <Link
                     key={recipe.id}
-                    className="p-4 hover:bg-gray-50 transition-colors cursor-pointer"
+                    href={`/notes/${recipe.id}`}
+                    className="block"
                   >
-                    <div className="flex items-start space-x-3">
-                      {recipe.thumbnail && (
-                        <img
-                          src={recipe.thumbnail}
-                          alt={recipe.title}
-                          className="w-16 h-16 object-cover rounded-md"
-                        />
-                      )}
-                      <div className="flex-1">
-                        <h3 className="text-lg font-medium text-gray-900">{recipe.title}</h3>
-                        <div className="mt-1 flex items-center text-sm text-gray-500">
-                          <span className="capitalize">{recipe.type}</span>
-                          {recipe.cookingTime && (
-                            <>
-                              <span className="mx-2">•</span>
-                              <span>{recipe.cookingTime}</span>
-                            </>
-                          )}
+                    <div
+                      className="p-4 hover:bg-gray-50 transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-start space-x-3">
+                        {recipe.thumbnail && (
+                          <img
+                            src={recipe.thumbnail}
+                            alt={recipe.title}
+                            className="w-16 h-16 object-cover rounded-md"
+                          />
+                        )}
+                        <div className="flex-1">
+                          <h3 className="text-lg font-medium text-gray-900">{recipe.title}</h3>
+                          <div className="mt-1 flex items-center text-sm text-gray-500">
+                            <span className="capitalize">{recipe.type}</span>
+                            {recipe.cookingTime && (
+                              <>
+                                <span className="mx-2">•</span>
+                                <span>{recipe.cookingTime}</span>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 ))}
                 {savedRecipes.length === 0 && (
                   <div className="p-4 text-center text-gray-500">
