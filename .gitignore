@@ -28,3 +28,5 @@ yarn-error.log*
 # OS
 .DS_Store
 Thumbs.db
+.next/static/webpack/07ad9817fb70d66d.webpack.hot-update.json
+.next/static/webpack/07ad9817fb70d66d.webpack.hot-update.json
