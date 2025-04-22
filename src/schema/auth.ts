@@ -1,8 +1,8 @@
 // src/schema/auth.ts
-import { pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
-  id: text('id').primaryKey(),
+  id: uuid('id').primaryKey().defaultRandom(),
   name: text('name'),
   email: text('email').notNull().unique(),
   emailVerified: timestamp('emailVerified', { mode: 'date' }),
@@ -12,13 +12,13 @@ export const users = pgTable('users', {
 
 export const sessions = pgTable('sessions', {
   id: text('id').primaryKey(),
-  user_id: text('user_id').notNull(),
+  user_id: uuid('user_id').notNull(),
   expires_at: timestamp('expires_at', { mode: 'date' }).notNull(),
 });
 
 export const accounts = pgTable('accounts', {
   id: text('id').primaryKey(),
-  userId: text('userId').notNull(),
+  userId: uuid('userId').notNull(),
   type: text('type').notNull(),
   provider: text('provider').notNull(),
   providerAccountId: text('providerAccountId').notNull(),
