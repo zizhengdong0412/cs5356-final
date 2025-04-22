@@ -4,13 +4,15 @@ import { useState, useEffect, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { authClient } from '@/lib/auth-client';
+import { transformDatabaseRecipe, parseRecipeJsonData } from '@/lib/recipe-transformers';
+import { Recipe } from '@/lib/recipe-helpers';
 
 interface Note {
   id: string;
   title: string;
   description: string;
-  ingredients: string;
-  instructions: string;
+  ingredients: any; // Allow for both string and JSON structure
+  instructions: any; // Allow for both string and JSON structure
   cooking_time: number | null;
   servings: number | null;
   type: string;
@@ -81,6 +83,20 @@ export default function NotePage({ params }: { params: { id: string } }) {
         }
         
         const data = await response.json();
+
+        // Try to parse any JSON strings for ingredients and instructions
+        try {
+          if (typeof data.ingredients === 'string' && data.ingredients.startsWith('[')) {
+            data.ingredients = JSON.parse(data.ingredients);
+          }
+          
+          if (typeof data.instructions === 'string' && data.instructions.startsWith('[')) {
+            data.instructions = JSON.parse(data.instructions);
+          }
+        } catch (err) {
+          console.error('Error parsing JSON strings:', err);
+        }
+        
         setNote(data);
         
         // 如果成功获取笔记，顺便获取共享记录
@@ -402,22 +418,50 @@ export default function NotePage({ params }: { params: { id: string } }) {
             <div className="mb-8">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Ingredients</h2>
               <ul className="list-disc pl-5 space-y-2">
-                {note.ingredients.split('\n').map((ingredient, index) => (
-                  <li key={index} className="text-gray-700">
-                    {ingredient.trim()}
-                  </li>
-                ))}
+                {typeof note.ingredients === 'string' ? 
+                  // Handle plain string format
+                  note.ingredients.split('\n').map((ingredient, index) => (
+                    <li key={index} className="text-gray-700">
+                      {ingredient.trim()}
+                    </li>
+                  ))
+                  : 
+                  // Handle JSON object format
+                  Array.isArray(note.ingredients) && note.ingredients.map((ingredient, index) => (
+                    <li key={index} className="text-gray-700">
+                      {typeof ingredient === 'string' ? 
+                        ingredient 
+                        : 
+                        `${ingredient.amount || ''} ${ingredient.unit || ''} ${ingredient.name || ''} ${ingredient.notes ? `(${ingredient.notes})` : ''}`
+                      }
+                    </li>
+                  ))
+                }
               </ul>
             </div>
 
             <div>
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Instructions</h2>
               <div className="prose max-w-none text-gray-700">
-                {note.instructions.split('\n').map((instruction, index) => (
-                  <p key={index} className="mb-4">
-                    {instruction.trim()}
-                  </p>
-                ))}
+                {typeof note.instructions === 'string' ?
+                  // Handle plain string format
+                  note.instructions.split('\n').map((instruction, index) => (
+                    <p key={index} className="mb-4">
+                      {instruction.trim()}
+                    </p>
+                  ))
+                  :
+                  // Handle JSON object format
+                  Array.isArray(note.instructions) && note.instructions.map((instruction, index) => (
+                    <p key={index} className="mb-4">
+                      {typeof instruction === 'string' ?
+                        instruction
+                        : 
+                        `${instruction.text || ''} ${instruction.time ? `(${instruction.time} minutes)` : ''}`
+                      }
+                    </p>
+                  ))
+                }
               </div>
             </div>
           </div>

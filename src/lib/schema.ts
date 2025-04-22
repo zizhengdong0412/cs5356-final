@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, integer, uuid, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, boolean, integer, uuid, pgEnum, jsonb } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -19,13 +19,26 @@ export const sessions = pgTable('sessions', {
   updated_at: timestamp('updated_at').defaultNow().notNull(),
 });
 
+export const measurementUnitEnum = pgEnum('measurement_unit', [
+  'g', 'kg', 'ml', 'l', 'tsp', 'tbsp', 'cup', 'oz', 'lb', 'piece', 'pinch'
+]);
+
 export const recipes = pgTable('recipes', {
   id: uuid('id').primaryKey().defaultRandom(),
   user_id: uuid('user_id').notNull().references(() => users.id),
   title: text('title').notNull(),
   description: text('description'),
-  ingredients: text('ingredients').notNull(),
-  instructions: text('instructions').notNull(),
+  ingredients: jsonb('ingredients').notNull().$type<{
+    name: string;
+    amount: number;
+    unit: string;
+    notes?: string;
+  }[]>(),
+  instructions: jsonb('instructions').notNull().$type<{
+    step: number;
+    text: string;
+    time?: number; // in minutes
+  }[]>(),
   cooking_time: integer('cooking_time'),
   servings: integer('servings'),
   type: text('type').notNull(), // 'personal' or 'external'

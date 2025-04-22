@@ -4,6 +4,31 @@ import { recipes } from '@/lib/schema';
 import { v4 as uuidv4 } from 'uuid';
 import { eq } from 'drizzle-orm';
 import { validateSessionFromCookie } from '@/lib/server-auth-helper';
+import { z } from 'zod';
+
+// Validation schemas
+const ingredientSchema = z.object({
+  name: z.string().min(1, 'Ingredient name is required'),
+  amount: z.number().positive('Amount must be positive'),
+  unit: z.string().min(1, 'Unit is required'),
+  notes: z.string().optional(),
+});
+
+const instructionSchema = z.object({
+  step: z.number().positive('Step number must be positive'),
+  text: z.string().min(1, 'Instruction text is required'),
+  time: z.number().positive('Time must be positive').optional(),
+});
+
+const recipeSchema = z.object({
+  title: z.string().min(1, 'Title is required').max(100, 'Title must be less than 100 characters'),
+  description: z.string().optional(),
+  ingredients: z.array(ingredientSchema).min(1, 'At least one ingredient is required'),
+  instructions: z.array(instructionSchema).min(1, 'At least one instruction is required'),
+  cookingTime: z.string().optional().transform(val => val ? parseInt(val) : null),
+  servings: z.string().optional().transform(val => val ? parseInt(val) : null),
+  type: z.enum(['personal', 'external']).default('personal'),
+});
 
 export async function POST(request: Request) {
   try {
@@ -23,38 +48,41 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    // Extract fields with proper client-side names
+    
+    // Validate request body against schema
+    const validationResult = recipeSchema.safeParse(body);
+    
+    if (!validationResult.success) {
+      return NextResponse.json(
+        { error: 'Invalid recipe data', details: validationResult.error.errors },
+        { status: 400 }
+      );
+    }
+
     const { 
       title, 
       description, 
       ingredients, 
       instructions, 
-      cookingTime, // Changed from cooking_time to match form field
+      cookingTime,
       servings,
-      type // This field exists in the form and now in DB too
-    } = body;
+      type 
+    } = validationResult.data;
 
     console.log('Recipe data received:', body); // Log for debugging
 
-    if (!title || !ingredients || !instructions) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
-    }
-
-    // Now we can include the type field since it exists in the database
+    // Create recipe with validated data
     const recipe = await db
       .insert(recipes)
       .values({
         user_id: user.id,
         title,
         description: description || '',
-        ingredients,
-        instructions,
-        cooking_time: cookingTime ? parseInt(cookingTime) : null, // Map cookingTime to cooking_time
-        servings: servings ? parseInt(servings) : null,
-        type: type || 'personal', // Use the type from the form or default to 'personal'
+        ingredients: JSON.stringify(ingredients),
+        instructions: JSON.stringify(instructions),
+        cooking_time: cookingTime,
+        servings,
+        type,
       })
       .returning();
 
