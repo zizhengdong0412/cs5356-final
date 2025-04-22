@@ -100,8 +100,8 @@ export default function EditNotePage({ params }: { params: { id: string } }) {
             } else {
               // It's a plain text string, convert to structured format
               parsedIngredients = data.ingredients.split('\n')
-                .filter(line => line.trim())
-                .map((line, index) => ({
+                .filter((line: string) => line.trim())
+                .map((line: string, index: number) => ({
                   name: line.trim(),
                   amount: 1,
                   unit: '',
@@ -119,8 +119,8 @@ export default function EditNotePage({ params }: { params: { id: string } }) {
             } else {
               // It's a plain text string, convert to structured format
               parsedInstructions = data.instructions.split('\n')
-                .filter(line => line.trim())
-                .map((line, index) => ({
+                .filter((line: string) => line.trim())
+                .map((line: string, index: number) => ({
                   step: index + 1,
                   text: line.trim(),
                 }));
@@ -359,7 +359,7 @@ export default function EditNotePage({ params }: { params: { id: string } }) {
     <div className="min-h-screen bg-gray-50 py-6">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-gray-900">Edit Note</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Edit Recipe</h1>
           <Link
             href={`/notes/${params.id}`}
             className="text-blue-500 hover:text-blue-600 font-medium flex items-center"
@@ -554,6 +554,7 @@ export default function EditNotePage({ params }: { params: { id: string } }) {
               <div>
                 <label htmlFor="cookingTime" className="block text-sm font-medium text-gray-700">
                   Cooking Time (minutes)
+                  <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
@@ -568,6 +569,7 @@ export default function EditNotePage({ params }: { params: { id: string } }) {
               <div>
                 <label htmlFor="servings" className="block text-sm font-medium text-gray-700">
                   Servings
+                  <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"

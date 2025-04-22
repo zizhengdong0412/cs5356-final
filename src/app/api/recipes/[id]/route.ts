@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { recipes } from '@/lib/schema';
 import { authClient } from '@/lib/auth-client';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { sendEmail } from '@/lib/email'; // 👈 Added SendGrid utility
 import { validateSessionFromCookie } from '@/lib/server-auth-helper';
 import { z } from 'zod';
@@ -118,9 +118,12 @@ export async function PATCH(
 
     // Parse the request body
     const body = await request.json();
+    console.log('Request body:', JSON.stringify(body, null, 2));
+    
     const validationResult = recipeSchema.safeParse(body);
 
     if (!validationResult.success) {
+      console.error('Validation error:', JSON.stringify(validationResult.error.format(), null, 2));
       return NextResponse.json(
         { error: 'Invalid recipe data', details: validationResult.error.format() },
         { status: 400 }
@@ -142,8 +145,8 @@ export async function PATCH(
       .set({
         title,
         description,
-        ingredients: JSON.stringify(ingredients),
-        instructions: JSON.stringify(instructions),
+        ingredients: sql`${JSON.stringify(ingredients)}::json`,
+        instructions: sql`${JSON.stringify(instructions)}::json`,
         cooking_time: cookingTime,
         servings,
         type,

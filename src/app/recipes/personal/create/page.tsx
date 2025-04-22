@@ -450,6 +450,7 @@ export default function CreatePersonalRecipePage() {
                   <div>
                     <label htmlFor="cookingTime" className="block text-sm font-medium text-gray-700">
                       Cooking Time (minutes)
+                      <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="number"
@@ -471,6 +472,7 @@ export default function CreatePersonalRecipePage() {
                   <div>
                     <label htmlFor="servings" className="block text-sm font-medium text-gray-700">
                       Servings
+                      <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="number"
