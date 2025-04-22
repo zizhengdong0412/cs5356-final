@@ -33,7 +33,6 @@ Users can share individual recipes or entire Recipe Binders with other users.
 
 ## Learnings  
 [Reflect on what surprised you – what was harder, easier, or most rewarding?]
-
 ## Logistics
 
 1. run " npx drizzle-kit push "
@@ -92,3 +91,4 @@ Users can create/edit/delete their recipes
 Recipes can be organized into binders
 Binders can be shared with different permission levels
 All actions are tracked with proper error handling and loading states
+
