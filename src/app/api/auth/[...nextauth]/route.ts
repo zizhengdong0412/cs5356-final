@@ -1,4 +1,8 @@
-import { handlers } from '@/lib/auth';
+import NextAuth from "next-auth";
+import { authOptions } from '@/lib/auth';
 
-export const { GET, POST } = handlers;
-// Edge runtime removed as it's not compatible with postgres 
+// Create the handler directly in the route file
+const handler = NextAuth(authOptions);
+
+// Export the handlers
+export const { GET, POST } = handler;

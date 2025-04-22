@@ -116,7 +116,9 @@ export const authOptions = {
   debug: isDev,
 };
 
-export const { handlers, auth, signIn, signOut } = NextAuth(authOptions);
+export const auth = async () => await NextAuth(authOptions).auth();
+export const signIn = async (...args: any[]) => await NextAuth(authOptions).signIn(...args);
+export const signOut = async (...args: any[]) => await NextAuth(authOptions).signOut(...args);
 
 export async function getAuthSession() {
   if (typeof auth === 'function') {
