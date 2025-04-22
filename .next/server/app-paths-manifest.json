@@ -1,10 +1,12 @@
 {
   "/dashboard/page": "app/dashboard/page.js",
-  "/api/recipes/route": "app/api/recipes/route.js",
-  "/api/recipes/[id]/route": "app/api/recipes/[id]/route.js",
-  "/notes/[id]/page": "app/notes/[id]/page.js",
+  "/recipes/[id]/page": "app/recipes/[id]/page.js",
+  "/shared/[code]/page": "app/shared/[code]/page.js",
   "/api/client-auth/[...action]/route": "app/api/client-auth/[...action]/route.js",
+  "/api/recipes/route": "app/api/recipes/route.js",
+  "/recipes/personal/create/page": "app/recipes/personal/create/page.js",
+  "/notes/[id]/page": "app/notes/[id]/page.js",
+  "/api/recipes/[id]/route": "app/api/recipes/[id]/route.js",
   "/api/recipes/share/route": "app/api/recipes/share/route.js",
-  "/api/shared/[code]/route": "app/api/shared/[code]/route.js",
-  "/shared/[code]/page": "app/shared/[code]/page.js"
+  "/notes/[id]/edit/page": "app/notes/[id]/edit/page.js"
 }

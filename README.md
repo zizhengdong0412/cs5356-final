@@ -33,3 +33,6 @@ Users can share individual recipes or entire Recipe Binders with other users.
 
 ## Learnings  
 [Reflect on what surprised you – what was harder, easier, or most rewarding?]
+
+## Logistics
+
