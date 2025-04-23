@@ -5,9 +5,7 @@ build/
 dist/
 
 # Dependencies
-/node_modules
-/.pnp
-.pnp.js
+node_modules/
 
 # Environment variables
 .env
@@ -26,10 +24,10 @@ yarn-error.log*
 .vscode/
 *.swp
 *.swo
+.cursor/
 
 # OS
 .DS_Store
 Thumbs.db
-.next/static/webpack/07ad9817fb70d66d.webpack.hot-update.json
-.next/static/webpack/07ad9817fb70d66d.webpack.hot-update.json
-.next/
+
+

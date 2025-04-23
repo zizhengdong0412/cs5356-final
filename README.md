@@ -36,6 +36,7 @@ Users can share individual recipes or entire Recipe Binders with other users.
 ## Logistics
 
 1. run " npx drizzle-kit push "
+2. run " npm install "
 2. run " npm run dev "
 
 ## Database & Data Layer
