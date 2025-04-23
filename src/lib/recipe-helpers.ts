@@ -26,6 +26,7 @@ export const recipeDisplaySchema = z.object({
   userId: z.string().optional(),
   createdAt: z.date().optional(),
   updatedAt: z.date().optional(),
+  thumbnail: z.string().optional(),
 });
 
 export type Ingredient = z.infer<typeof ingredientSchema>;

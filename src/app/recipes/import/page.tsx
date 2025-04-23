@@ -7,17 +7,43 @@ import Image from 'next/image';
 import { authClient } from '@/lib/auth-client';
 import { TheMealDBService } from '@/lib/themealdb';
 
+// Helper function to parse measure string into amount and unit
+const parseMeasure = (measure: string | null): { amount: number, unit: string } => {
+  if (!measure || !measure.trim()) {
+    return { amount: 1, unit: '' };
+  }
+  
+  // Try to extract numbers from the measure string
+  const numberMatch = measure.match(/([0-9]+(\.[0-9]+)?)/);
+  const amount = numberMatch ? parseFloat(numberMatch[1]) : 1;
+  
+  // Remove the number to get the unit
+  const unit = measure.replace(/([0-9]+(\.[0-9]+)?)/g, '').trim();
+  
+  return { amount, unit };
+};
+
 // Define possible import states
 type ImportState = 'initial' | 'loading' | 'preview' | 'error' | 'mealdb-search' | 'mealdb-results';
 
 interface ParsedRecipe {
   title: string;
   description: string;
-  ingredients: string;
-  instructions: string;
+  ingredients: string | Array<{
+    name: string;
+    amount: number;
+    unit: string;
+    notes?: string;
+  }>;
+  instructions: string | Array<{
+    step: number;
+    text: string;
+    time?: number;
+  }>;
   cookingTime?: string;
   servings?: string;
   type: string;
+  thumbnail?: string;
 }
 
 export default function ImportRecipePage() {
@@ -142,7 +168,7 @@ export default function ImportRecipePage() {
   const handleSelectMealDbRecipe = async (meal: any) => {
     try {
       // Convert MealDB format to our application's format
-      const ingredients = [];
+      const ingredientsArray = [];
       
       // MealDB has ingredients from 1-20 with corresponding measures
       for (let i = 1; i <= 20; i++) {
@@ -150,19 +176,35 @@ export default function ImportRecipePage() {
         const measure = meal[`strMeasure${i}`];
         
         if (ingredient && ingredient.trim()) {
-          ingredients.push(`${measure?.trim() || ''} ${ingredient.trim()}`);
+          // Create structured ingredient object instead of string
+          const { amount, unit } = parseMeasure(measure);
+          ingredientsArray.push({
+            name: ingredient.trim(),
+            amount,
+            unit,
+            notes: ''
+          });
         }
       }
+      
+      // Convert instructions to structured format
+      const instructionsArray = meal.strInstructions
+        .split(/\r?\n/)
+        .filter((line: string) => line.trim().length > 0)
+        .map((text: string, index: number) => ({
+          step: index + 1,
+          text: text.trim(),
+        }));
       
       const parsedRecipe = {
         title: meal.strMeal,
         description: `${meal.strCategory} recipe from ${meal.strArea}`,
-        ingredients: ingredients.join('\n'),
-        instructions: meal.strInstructions,
-        // Optional fields if available
+        ingredients: ingredientsArray,
+        instructions: instructionsArray,
         cookingTime: '',
         servings: '',
         type: 'external',
+        thumbnail: meal.strMealThumb
       };
       
       setParsedRecipe(parsedRecipe);
@@ -218,17 +260,53 @@ export default function ImportRecipePage() {
     setIsSubmitting(true);
     
     try {
+      // Make sure we're sending structured data for ingredients and instructions
+      const recipeToSave = {
+        ...parsedRecipe,
+        // Ensure ingredients and instructions are arrays of objects, not strings
+        ingredients: typeof parsedRecipe.ingredients === 'string' 
+          ? parsedRecipe.ingredients.split('\n')
+              .filter(line => line.trim())
+              .map(line => {
+                const { amount, unit } = parseMeasure(line);
+                return {
+                  name: line.replace(/^[\d\s\w]+/, '').trim() || line.trim(), // Fallback to full line if extraction fails
+                  amount,
+                  unit,
+                  notes: ''
+                };
+              })
+          : parsedRecipe.ingredients,
+        
+        instructions: typeof parsedRecipe.instructions === 'string'
+          ? parsedRecipe.instructions.split('\n')
+              .filter(line => line.trim())
+              .map((text, index) => ({
+                step: index + 1,
+                text: text.trim()
+              }))
+          : parsedRecipe.instructions,
+        
+        // Ensure these fields are correctly formatted
+        cookingTime: parsedRecipe.cookingTime ? parseInt(parsedRecipe.cookingTime.toString()) || null : null,
+        servings: parsedRecipe.servings ? parseInt(parsedRecipe.servings.toString()) || null : null,
+      };
+      
+      // Log the request for debugging
+      console.log('Saving recipe with data:', JSON.stringify(recipeToSave));
+      
       const response = await fetch('/api/recipes', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify(parsedRecipe),
+        body: JSON.stringify(recipeToSave),
       });
       
       if (!response.ok) {
         const data = await response.json();
+        console.error('Server error response:', data);
         throw new Error(data.error || 'Failed to save recipe');
       }
       
@@ -402,6 +480,85 @@ export default function ImportRecipePage() {
     </div>
   );
   
+  const renderPreview = () => (
+    <div className="bg-white p-6 rounded-lg shadow-sm">
+      <h2 className="text-xl font-medium text-gray-900 mb-4">Recipe Preview</h2>
+      
+      {parsedRecipe && (
+        <div className="space-y-4">
+          <div>
+            <h3 className="font-medium mb-1">Title</h3>
+            <p>{parsedRecipe.title}</p>
+          </div>
+          
+          <div>
+            <h3 className="font-medium mb-1">Description</h3>
+            <p>{parsedRecipe.description}</p>
+          </div>
+          
+          <div>
+            <h3 className="font-medium mb-1">Ingredients</h3>
+            {typeof parsedRecipe.ingredients === 'string' ? (
+              <pre className="whitespace-pre-wrap bg-gray-50 p-3 rounded">{parsedRecipe.ingredients}</pre>
+            ) : (
+              <ul className="list-disc pl-5">
+                {parsedRecipe.ingredients.map((ingredient, index) => (
+                  <li key={index}>
+                    {ingredient.amount} {ingredient.unit} {ingredient.name} 
+                    {ingredient.notes ? ` (${ingredient.notes})` : ''}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          
+          <div>
+            <h3 className="font-medium mb-1">Instructions</h3>
+            {typeof parsedRecipe.instructions === 'string' ? (
+              <pre className="whitespace-pre-wrap bg-gray-50 p-3 rounded">{parsedRecipe.instructions}</pre>
+            ) : (
+              <ol className="list-decimal pl-5">
+                {parsedRecipe.instructions.map((instruction, index) => (
+                  <li key={index} className="mb-2">
+                    {instruction.text}
+                    {instruction.time ? ` (${instruction.time} minutes)` : ''}
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+          
+          {parsedRecipe.thumbnail && (
+            <div>
+              <h3 className="font-medium mb-1">Image</h3>
+              <img 
+                src={parsedRecipe.thumbnail} 
+                alt={parsedRecipe.title} 
+                className="w-full max-w-md rounded-lg" 
+              />
+            </div>
+          )}
+          
+          <div className="flex space-x-4 mt-6">
+            <button
+              onClick={handleSaveRecipe}
+              disabled={isSubmitting}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-300"
+            >
+              {isSubmitting ? 'Saving...' : 'Save Recipe'}
+            </button>
+            <button
+              onClick={() => setImportState('initial')}
+              className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   // Render the appropriate view based on the current import state
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
@@ -427,63 +584,7 @@ export default function ImportRecipePage() {
       
       {importState === 'mealdb-results' && renderMealDBResults()}
       
-      {importState === 'preview' && (
-        <div className="bg-white p-6 rounded-lg shadow-sm">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold">Recipe Preview</h2>
-            <button
-              onClick={() => setImportState('initial')}
-              className="text-blue-500 hover:text-blue-700"
-            >
-              Back to Import Options
-            </button>
-          </div>
-          
-          {parsedRecipe && (
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Title</h3>
-                <p className="mt-1 text-lg">{parsedRecipe.title}</p>
-              </div>
-              
-              {parsedRecipe.description && (
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500">Description</h3>
-                  <p className="mt-1">{parsedRecipe.description}</p>
-                </div>
-              )}
-              
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Ingredients</h3>
-                <div className="mt-1 whitespace-pre-line">{parsedRecipe.ingredients}</div>
-              </div>
-              
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Instructions</h3>
-                <div className="mt-1 whitespace-pre-line">{parsedRecipe.instructions}</div>
-              </div>
-              
-              <div className="flex space-x-4 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setImportState('initial')}
-                  className="flex-1 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm font-medium shadow-sm transition-colors hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveRecipe}
-                  disabled={isSubmitting}
-                  className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium shadow-sm transition-colors"
-                >
-                  {isSubmitting ? 'Saving...' : 'Save Recipe'}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      {importState === 'preview' && renderPreview()}
       
       {importState === 'error' && (
         <div className="bg-white p-6 rounded-lg shadow-sm text-center">

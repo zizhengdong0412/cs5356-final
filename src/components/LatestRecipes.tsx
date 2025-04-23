@@ -49,25 +49,49 @@ export default function LatestRecipes() {
       setIsSaving(true);
       setSaveError(null);
       
-      // Format ingredients from TheMealDB format
-      const ingredients: string[] = [];
+      // Format ingredients from TheMealDB format as structured objects
+      const ingredientsArray = [];
       for (let i = 1; i <= 20; i++) {
         const ingredient = selectedMeal[`strIngredient${i}` as keyof Meal];
-        const measure = selectedMeal[`strMeasure${i}` as keyof Meal];
+        const measure = selectedMeal[`strMeasure${i}` as keyof Meal] as string;
+        
         if (ingredient && ingredient.trim() !== '') {
-          ingredients.push(`${measure || ''} ${ingredient}`.trim());
+          // Parse measure to extract amount and unit
+          const measureStr = measure || '';
+          const numberMatch = measureStr.match(/([0-9]+(\.[0-9]+)?)/);
+          const amount = numberMatch ? parseFloat(numberMatch[1]) : 1;
+          const unit = measureStr.replace(/([0-9]+(\.[0-9]+)?)/g, '').trim();
+          
+          ingredientsArray.push({
+            name: ingredient.trim(),
+            amount: amount,
+            unit: unit,
+            notes: ''
+          });
         }
       }
 
-      // Create recipe object
+      // Format instructions as structured objects
+      const instructionsArray = selectedMeal.strInstructions
+        .split(/\r?\n/)
+        .filter((line: string) => line.trim())
+        .map((text: string, index: number) => ({
+          step: index + 1,
+          text: text.trim()
+        }));
+
+      // Create recipe object with structured data
       const recipe = {
         title: selectedMeal.strMeal,
         description: `${selectedMeal.strCategory} recipe from ${selectedMeal.strArea}`,
-        ingredients: ingredients.join('\n'),
-        instructions: selectedMeal.strInstructions,
+        ingredients: ingredientsArray,
+        instructions: instructionsArray,
         type: 'external',
         thumbnail: selectedMeal.strMealThumb,
       };
+
+      // Log the recipe data for debugging
+      console.log('Saving recipe with data:', JSON.stringify(recipe));
 
       // Save recipe to backend
       const response = await fetch('/api/recipes', {
@@ -81,6 +105,7 @@ export default function LatestRecipes() {
 
       if (!response.ok) {
         const data = await response.json();
+        console.error('Server error response:', data);
         throw new Error(data.error || 'Failed to save recipe');
       }
 
