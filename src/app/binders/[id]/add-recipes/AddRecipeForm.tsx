@@ -7,7 +7,7 @@ import Link from 'next/link';
 type Binder = {
   id: string;
   title: string;
-  description?: string;
+  description?: string | null;
   user_id: string;
   created_at: Date;
   updated_at: Date;
@@ -16,11 +16,16 @@ type Binder = {
 type Recipe = {
   id: string;
   title: string;
-  description?: string;
-  thumbnail?: string;
-  cooking_time?: number;
-  servings?: number;
+  description?: string | null;
+  thumbnail?: string | null;
+  cooking_time?: number | null;
+  servings?: number | null;
+  type?: string;
+  ingredients?: string | null;
+  instructions?: string | null;
   user_id: string;
+  created_at?: Date;
+  updated_at?: Date;
 };
 
 export default function AddRecipeForm({

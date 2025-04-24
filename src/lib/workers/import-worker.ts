@@ -59,7 +59,7 @@ recipeImportQueue.process(async (job) => {
         cooking_time: null, // Not provided by TheMealDB
         servings: null, // Not provided by TheMealDB
         type: 'external',
-        image_url: meal.strMealThumb,
+        thumbnail: meal.strMealThumb,
       })
       .returning();
     

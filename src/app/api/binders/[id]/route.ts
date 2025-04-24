@@ -2,17 +2,17 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { sql } from 'drizzle-orm';
-import { eq, and } from 'drizzle-orm/expressions';
-import { binders } from '@/lib/db/schema/binders';
+import { eq, and } from 'drizzle-orm';
+import { binders } from '@/schema';
 import { auth } from '@/lib/auth';
-import { validateSession } from '@/lib/session-helper';
+import { getSessionFromCookie } from '@/lib/session-helper';
 
 // Get a single binder with its recipes
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await validateSession();
+  const session = await getSessionFromCookie();
   if (!session) {
     return NextResponse.json(
       { error: 'Unauthorized' },
@@ -59,7 +59,7 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await validateSession();
+  const session = await getSessionFromCookie();
   if (!session) {
     return NextResponse.json(
       { error: 'Unauthorized' },
@@ -113,7 +113,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await validateSession();
+  const session = await getSessionFromCookie();
   if (!session) {
     return NextResponse.json(
       { error: 'Unauthorized' },

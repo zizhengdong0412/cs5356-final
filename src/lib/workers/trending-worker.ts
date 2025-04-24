@@ -48,7 +48,7 @@ recipeTrendingQueue.process(async (job) => {
         r.id,
         r.title,
         r.description,
-        r.image_url,
+        r.thumbnail,
         r.user_id,
         COALESCE(rv.view_count, 0) as recent_views,
         COALESCE(rs.share_count, 0) as recent_shares,
