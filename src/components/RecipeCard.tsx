@@ -26,7 +26,13 @@ export default function RecipeCard({ recipe }: RecipeProps) {
   const handleEdit = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    router.push(`/recipes/${recipe.id}/edit`);
+    try {
+      router.push(`/recipes/${recipe.id}/edit`);
+    } catch (error) {
+      console.error('Error navigating with router:', error);
+      // Fallback to direct navigation
+      window.location.href = `/recipes/${recipe.id}/edit`;
+    }
   };
 
   const handleDelete = async (e: React.MouseEvent) => {
@@ -73,6 +79,22 @@ export default function RecipeCard({ recipe }: RecipeProps) {
       onMouseLeave={() => {
         setShowActions(false);
         setShowDeleteConfirm(false);
+      }}
+      onClick={(e) => {
+        // If this is a direct click (not on one of the action buttons)
+        if ((e.target as HTMLElement).tagName !== 'BUTTON' && 
+            !((e.target as HTMLElement).closest('button'))) {
+          // Prevent default link behavior
+          e.preventDefault();
+          
+          // Try router navigation first
+          try {
+            router.push(`/recipes/${recipe.id}`);
+          } catch (error) {
+            console.error('Navigation error:', error);
+            window.location.href = `/recipes/${recipe.id}`;
+          }
+        }
       }}
     >
       <div className="relative w-full h-48">

@@ -326,9 +326,21 @@ export default function EditRecipePage({ params }: { params: { id: string } }) {
         throw new Error(errorMessage);
       }
 
-      // Success! Navigate back to recipe page
+      // Success! Navigate to dashboard which should work more reliably than the recipe page
       console.log('Update successful');
-      router.push(`/recipes/${params.id}`);
+      try {
+        // Try to use the Next.js router first
+        router.push('/dashboard');
+        
+        // Set a fallback in case the router navigation fails
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 100);
+      } catch (error) {
+        // Direct browser navigation as fallback
+        console.error('Router navigation failed:', error);
+        window.location.href = '/dashboard';
+      }
     } catch (error) {
       console.error('Error updating recipe:', error);
       setSubmitError(error instanceof Error ? error.message : 'An unexpected error occurred');
