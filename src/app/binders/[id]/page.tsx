@@ -5,6 +5,7 @@ import { getSessionFromCookie } from '@/lib/session-helper';
 import { sql } from 'drizzle-orm';
 import BinderActions from './BinderActions';
 import Image from 'next/image';
+import RecipeCard from '@/components/RecipeCard';
 
 export default async function BinderDetailPage({ params }: { params: { id: string } }) {
   const session = await getSessionFromCookie();
@@ -96,40 +97,18 @@ export default async function BinderDetailPage({ params }: { params: { id: strin
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {recipesInBinder.map((recipe: any) => (
-              <Link 
-                key={recipe.id} 
-                href={`/recipes/${recipe.id}`}
-                className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition"
-              >
-                <div className="relative w-full h-48">
-                  {recipe.thumbnail ? (
-                    <Image
-                      src={recipe.thumbnail}
-                      alt={recipe.title}
-                      fill
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
-                      <span className="text-gray-400">No image</span>
-                    </div>
-                  )}
-                </div>
-                <div className="p-4">
-                  <h3 className="text-lg font-medium mb-1 truncate">{recipe.title}</h3>
-                  {recipe.description && (
-                    <p className="text-gray-600 text-sm line-clamp-2 mb-2">{recipe.description}</p>
-                  )}
-                  <div className="flex items-center text-xs text-gray-500">
-                    {recipe.cooking_time && (
-                      <span className="mr-3">{recipe.cooking_time} mins</span>
-                    )}
-                    {recipe.servings && (
-                      <span>Serves {recipe.servings}</span>
-                    )}
-                  </div>
-                </div>
-              </Link>
+              <RecipeCard 
+                key={recipe.id}
+                recipe={{
+                  id: recipe.id,
+                  title: recipe.title,
+                  description: recipe.description,
+                  cookingTime: recipe.cooking_time,
+                  servings: recipe.servings,
+                  thumbnail: recipe.thumbnail,
+                  createdAt: recipe.created_at
+                }}
+              />
             ))}
           </div>
         )}

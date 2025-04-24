@@ -10,7 +10,7 @@ import { z } from 'zod';
 // Validation schemas - same as in the /api/recipes/route.ts
 const ingredientSchema = z.object({
   name: z.string().min(1, 'Ingredient name is required'),
-  amount: z.number().positive('Amount must be positive'),
+  amount: z.number().nonnegative('Amount must be zero or positive'),
   unit: z.string().min(1, 'Unit is required'),
   notes: z.string().optional(),
 });
@@ -18,7 +18,7 @@ const ingredientSchema = z.object({
 const instructionSchema = z.object({
   step: z.number().positive('Step number must be positive'),
   text: z.string().min(1, 'Instruction text is required'),
-  time: z.number().positive('Time must be positive').optional(),
+  time: z.number().nonnegative('Time must be zero or positive').optional(),
 });
 
 const recipeSchema = z.object({
@@ -26,8 +26,8 @@ const recipeSchema = z.object({
   description: z.string().optional(),
   ingredients: z.array(ingredientSchema).min(1, 'At least one ingredient is required'),
   instructions: z.array(instructionSchema).min(1, 'At least one instruction is required'),
-  cookingTime: z.string().optional().transform(val => val ? parseInt(val) : null),
-  servings: z.string().optional().transform(val => val ? parseInt(val) : null),
+  cookingTime: z.number().nullable().optional(),
+  servings: z.number().nullable().optional(),
   type: z.enum(['personal', 'external']).default('personal'),
 });
 
@@ -81,11 +81,8 @@ export async function GET(
   }
 }
 
-// PATCH to update a recipe
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+// Helper function for updating a recipe - used by both PUT and PATCH
+async function updateRecipe(request: NextRequest, params: { id: string }) {
   try {
     // Validate user session
     const session = await validateSessionFromCookie();
@@ -162,6 +159,16 @@ export async function PATCH(
       { status: 500 }
     );
   }
+}
+
+// PUT to update a recipe (full replacement)
+export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+  return updateRecipe(request, params);
+}
+
+// PATCH to update a recipe (partial update)
+export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+  return updateRecipe(request, params);
 }
 
 // DELETE a recipe
