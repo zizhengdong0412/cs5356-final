@@ -6,6 +6,7 @@ import { eq, and, sql } from 'drizzle-orm';
 import { sendEmail } from '@/lib/email'; // 👈 Added SendGrid utility
 import { validateSessionFromCookie } from '@/lib/server-auth-helper';
 import { z } from 'zod';
+import { binder_recipes } from '@/schema';
 
 // Validation schemas - same as in the /api/recipes/route.ts
 const ingredientSchema = z.object({
@@ -206,7 +207,11 @@ export async function DELETE(
       );
     }
 
-    // Delete the recipe
+    // First, delete all references in binder_recipes table
+    await db.delete(binder_recipes)
+      .where(eq(binder_recipes.recipe_id, params.id));
+
+    // Then delete the recipe itself
     await db.delete(recipes)
       .where(eq(recipes.id, params.id));
 
