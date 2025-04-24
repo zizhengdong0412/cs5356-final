@@ -8,6 +8,13 @@
       "when": 1745337548762,
       "tag": "0000_fine_cammi",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1745518781789,
+      "tag": "0001_flowery_red_ghost",
+      "breakpoints": true
     }
   ]
 }

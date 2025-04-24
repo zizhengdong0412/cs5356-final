@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { authClient } from '@/lib/auth-client';
 import { useState, useEffect } from 'react';
+import { checkClientAuth } from '@/lib/client-session-helper';
 
 export default function Navigation() {
   const pathname = usePathname();
@@ -13,9 +13,9 @@ export default function Navigation() {
     const checkSession = async () => {
       try {
         console.log('Checking for session in Navigation...');
-        const { data } = await authClient.getSession();
-        console.log('Session in Navigation:', data ? `Found (${data.user.email})` : 'Not found');
-        setHasSession(!!data);
+        const { isAuthenticated, user } = await checkClientAuth();
+        console.log('Session in Navigation:', user ? `Found (${user.email})` : 'Not found');
+        setHasSession(isAuthenticated);
       } catch (error) {
         console.error('Error checking session in Navigation:', error);
         setHasSession(false);
@@ -25,6 +25,7 @@ export default function Navigation() {
   }, []);
 
   const isActive = (path: string) => pathname === path;
+  const isActivePath = (path: string) => pathname?.startsWith(path);
 
   return (
     <nav className="bg-white shadow-md">
@@ -43,12 +44,20 @@ export default function Navigation() {
             {hasSession && (
               <>
                 <Link
-                  href="/dashboard"
+                  href="/binders"
                   className={`${
-                    isActive('/dashboard') ? 'text-blue-500' : 'text-gray-600'
+                    isActivePath('/binders') ? 'text-blue-500' : 'text-gray-600'
+                  } hover:text-blue-500 font-medium`}
+                >
+                  My Recipe Binders
+                </Link>
+                <Link
+                  href="/recipes"
+                  className={`${
+                    isActivePath('/recipes') && !isActivePath('/recipes/personal/new') ? 'text-blue-500' : 'text-gray-600'
                   } hover:text-blue-500`}
                 >
-                  My Recipes
+                  All Recipes
                 </Link>
                 <Link
                   href="/explore"
@@ -64,12 +73,12 @@ export default function Navigation() {
 
           <div className="flex items-center space-x-4">
             {hasSession ? (
-              <button
-                onClick={() => authClient.signOut()}
+              <a
+                href="/api/auth/signout"
                 className="px-4 py-2 text-gray-600 hover:text-blue-500"
               >
                 Sign Out
-              </button>
+              </a>
             ) : (
               <>
                 <Link
