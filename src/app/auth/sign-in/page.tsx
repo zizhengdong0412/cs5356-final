@@ -53,11 +53,11 @@ export default function SignInPage() {
 
       // Check if we have a user in the response
       if (result.data?.user) {
-        console.log('Sign in successful, redirecting to binders page...');
+        console.log('Sign in successful, redirecting to dashboard page...');
         setIsRedirecting(true);
         // Add a small delay before redirect to ensure the session is properly set
         await new Promise(resolve => setTimeout(resolve, 500));
-        router.replace('/binders');
+        router.replace('/dashboard');
       } else {
         setError('Sign in successful but no user data received');
         setLoading(false);
