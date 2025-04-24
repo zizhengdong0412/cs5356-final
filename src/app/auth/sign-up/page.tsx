@@ -39,6 +39,11 @@ export default function SignUpPage() {
         return;
       }
   
+      // Dispatch a custom event to notify components about auth change
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('auth-change'));
+      }
+
       router.push('/dashboard');
     } catch (err) {
       console.error(err);

@@ -55,6 +55,12 @@ export default function SignInPage() {
       if (result.data?.user) {
         console.log('Sign in successful, redirecting to dashboard page...');
         setIsRedirecting(true);
+        
+        // Dispatch a custom event to notify components about auth change
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('auth-change'));
+        }
+        
         // Add a small delay before redirect to ensure the session is properly set
         await new Promise(resolve => setTimeout(resolve, 500));
         router.replace('/dashboard');
