@@ -3,10 +3,7 @@ import { db } from '@/lib/db';
 import { getSessionFromCookie } from '@/lib/session-helper';
 import { and, eq } from 'drizzle-orm';
 import { binders } from '@/schema';
-import dynamic from 'next/dynamic';
-
-// Dynamically import the RecipeForm component with no SSR
-const RecipeForm = dynamic(() => import('./RecipeForm'), { ssr: false });
+import CreateRecipeForm from './CreateRecipeForm';
 
 export default async function CreateRecipeInBinderPage({ 
   params 
@@ -42,7 +39,7 @@ export default async function CreateRecipeInBinderPage({
     return (
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-8">Add New Recipe to "{binder.title}"</h1>
-        <RecipeForm binderId={binderId} binderTitle={binder.title} />
+        <CreateRecipeForm binderId={binderId} binderTitle={binder.title} />
       </div>
     );
   } catch (error) {
