@@ -38,14 +38,56 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const recipe = await db.query.recipes.findFirst({
-      where: eq(recipes.id, params.id),
-    });
+    const session = await validateSessionFromCookie();
+    const userId = session?.user?.id;
+    let recipe = null;
+    let sharedPermission = null;
+
+    // Try to get as owner
+    if (userId) {
+      recipe = await db.query.recipes.findFirst({
+        where: and(eq(recipes.id, params.id), eq(recipes.user_id, userId)),
+      });
+    }
+
+    // If not owner, try to get as shared_with
+    if (!recipe && userId) {
+      const shared = await db.execute(sql`
+        SELECT r.*, sr.permission
+        FROM shared_recipes sr
+        JOIN recipes r ON sr.recipe_id = r.id
+        WHERE sr.recipe_id = ${params.id} AND sr.shared_with_id = ${userId} AND sr.is_active = true
+        LIMIT 1
+      `);
+      if (shared.length > 0) {
+        recipe = shared[0];
+        sharedPermission = shared[0].permission;
+      }
+    }
+
+    // If not owner or direct share, try to get via share_code (link sharing)
+    if (!recipe) {
+      const url = new URL(request.url);
+      const shareCode = url.searchParams.get('shareCode');
+      if (shareCode) {
+        const shared = await db.execute(sql`
+          SELECT r.*, sr.permission
+          FROM shared_recipes sr
+          JOIN recipes r ON sr.recipe_id = r.id
+          WHERE sr.recipe_id = ${params.id} AND sr.share_code = ${shareCode} AND sr.is_active = true
+          LIMIT 1
+        `);
+        if (shared.length > 0) {
+          recipe = shared[0];
+          sharedPermission = shared[0].permission;
+        }
+      }
+    }
 
     if (!recipe) {
       return NextResponse.json(
-        { error: 'Recipe not found' },
-        { status: 404 }
+        { error: 'You do not have access to this recipe' },
+        { status: 403 }
       );
     }
 
@@ -70,6 +112,7 @@ export async function GET(
       ...recipe,
       ingredients: ingredientsData,
       instructions: instructionsData,
+      ...(sharedPermission ? { sharedPermission } : {}),
     };
 
     return NextResponse.json(formattedRecipe);

@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { db } from '@/lib/db';
 import { getSessionFromCookie } from '@/lib/session-helper';
 import { binders, shared_binders, binderPermissionTypeEnum } from '@/schema';
+import { users } from '@/lib/schema';
 
 // Share a binder with a user or via link
 export async function POST(
@@ -17,7 +18,7 @@ export async function POST(
     }
 
     const binderId = params.id;
-    const { sharedWithId, permission = 'view' } = await request.json();
+    const { sharedWithId, permission = 'view', email } = await request.json();
 
     // Check if the binder exists and belongs to the user
     const binderCheck = await db
@@ -38,13 +39,28 @@ export async function POST(
     // Generate a random share code
     const shareCode = crypto.randomBytes(6).toString('hex');
 
+    let resolvedSharedWithId = sharedWithId || null;
+    // If email is provided, look up user by email
+    if (email) {
+      const userLookup = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.email, email))
+        .limit(1);
+      if (userLookup.length > 0) {
+        resolvedSharedWithId = userLookup[0].id;
+      } else {
+        return NextResponse.json({ error: "User with this email not found" }, { status: 404 });
+      }
+    }
+
     // Create the share record
     const [sharedBinder] = await db
       .insert(shared_binders)
       .values({
         binder_id: binderId,
         owner_id: session.user.id,
-        shared_with_id: sharedWithId || null,
+        shared_with_id: resolvedSharedWithId,
         permission: permission as typeof binderPermissionTypeEnum.enumValues[number],
         share_code: shareCode,
       })

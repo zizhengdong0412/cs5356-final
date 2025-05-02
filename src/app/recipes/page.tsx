@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { getSessionFromCookie } from '@/lib/session-helper';
 import { eq } from 'drizzle-orm';
 import { recipes, binders } from '@/schema';
+import { sql } from 'drizzle-orm';
 
 export default async function RecipesPage() {
   const session = await getSessionFromCookie();
@@ -26,6 +27,17 @@ export default async function RecipesPage() {
     .from(recipes)
     .where(eq(recipes.user_id, session.user.id))
     .orderBy(recipes.created_at);
+
+  // Get recipes shared with the current user
+  const sharedResults = await db.execute(sql`
+    SELECT r.id, r.title, r.description, r.cooking_time, r.servings, r.thumbnail, r.created_at, sr.permission
+    FROM shared_recipes sr
+    JOIN recipes r ON sr.recipe_id = r.id
+    WHERE sr.shared_with_id = ${session.user.id} AND sr.is_active = true
+    ORDER BY r.created_at DESC
+  `);
+
+  const sharedRecipes = sharedResults as any[];
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -111,6 +123,32 @@ export default async function RecipesPage() {
               </div>
             </Link>
           ))}
+        </div>
+      )}
+
+      {/* Shared With Me */}
+      {sharedRecipes.length > 0 && (
+        <div className="mt-12">
+          <h2 className="text-2xl font-bold mb-4">Shared With Me</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {sharedRecipes.map((recipe) => (
+              <Link
+                key={recipe.id}
+                href={`/recipes/${recipe.id}`}
+                className="block bg-blue-50 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition border border-blue-200"
+              >
+                <div className="p-6">
+                  <h2 className="text-xl font-bold mb-2 truncate">{recipe.title}</h2>
+                  <div className="text-gray-500 text-sm">
+                    Shared permission: {recipe.permission}
+                  </div>
+                  <div className="text-gray-400 text-xs mt-1">
+                    Created: {new Date(recipe.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
         </div>
       )}
     </div>

@@ -21,23 +21,61 @@ export async function GET(
   }
 
   const binderId = params.id;
+  const userId = session.user.id;
+  let binder = null;
+  let sharedPermission = null;
 
-  // Get binder details
-  const binderResults = await db.execute(sql`
+  // Try to get as owner
+  let binderResults = await db.execute(sql`
     SELECT id, user_id, title, description, created_at, updated_at
     FROM binders
-    WHERE id = ${binderId} AND user_id = ${session.user.id}
+    WHERE id = ${binderId} AND user_id = ${userId}
     LIMIT 1
   `);
-
-  if (binderResults.length === 0) {
-    return NextResponse.json(
-      { error: 'Binder not found or unauthorized' },
-      { status: 404 }
-    );
+  if (binderResults.length > 0) {
+    binder = binderResults[0];
   }
 
-  const binder = binderResults[0];
+  // If not owner, try to get as shared_with
+  if (!binder) {
+    const sharedResults = await db.execute(sql`
+      SELECT b.id, b.user_id, b.title, b.description, b.created_at, b.updated_at, sb.permission
+      FROM shared_binders sb
+      JOIN binders b ON sb.binder_id = b.id
+      WHERE b.id = ${binderId} AND sb.shared_with_id = ${userId} AND sb.is_active = true
+      LIMIT 1
+    `);
+    if (sharedResults.length > 0) {
+      binder = sharedResults[0];
+      sharedPermission = sharedResults[0].permission;
+    }
+  }
+
+  // If not owner or direct share, try to get via share_code (link sharing)
+  if (!binder) {
+    const url = new URL(request.url);
+    const shareCode = url.searchParams.get('shareCode');
+    if (shareCode) {
+      const shared = await db.execute(sql`
+        SELECT b.id, b.user_id, b.title, b.description, b.created_at, b.updated_at, sb.permission
+        FROM shared_binders sb
+        JOIN binders b ON sb.binder_id = b.id
+        WHERE b.id = ${binderId} AND sb.share_code = ${shareCode} AND sb.is_active = true
+        LIMIT 1
+      `);
+      if (shared.length > 0) {
+        binder = shared[0];
+        sharedPermission = shared[0].permission;
+      }
+    }
+  }
+
+  if (!binder) {
+    return NextResponse.json(
+      { error: 'You do not have access to this binder' },
+      { status: 403 }
+    );
+  }
 
   // Get all recipes in this binder
   const recipesResults = await db.execute(sql`
@@ -49,7 +87,10 @@ export async function GET(
   `);
 
   return NextResponse.json({
-    binder,
+    binder: {
+      ...binder,
+      ...(sharedPermission ? { sharedPermission } : {}),
+    },
     recipes: recipesResults
   });
 }

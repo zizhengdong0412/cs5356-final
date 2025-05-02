@@ -36,6 +36,7 @@ export default function ShareBinderModal({
   const [copied, setCopied] = useState(false);
   const [existingShares, setExistingShares] = useState<ShareBinder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [email, setEmail] = useState('');
 
   // Load existing shares
   useEffect(() => {
@@ -70,6 +71,7 @@ export default function ShareBinderModal({
         },
         body: JSON.stringify({
           permission: 'view',
+          ...(email ? { email } : {}),
         }),
       });
 
@@ -185,13 +187,21 @@ export default function ShareBinderModal({
               </div>
             </div>
           ) : (
-            <form onSubmit={handleShare} className="mb-6">
+            <form onSubmit={e => { handleShare(e); setEmail(''); }} className="mb-6">
+              <label className="block mb-2 font-medium">Email (Optional)</label>
+              <input
+                type="email"
+                placeholder="recipient@example.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                className="w-full mb-4 px-3 py-2 border rounded focus:outline-none focus:ring"
+              />
               <button
                 type="submit"
                 disabled={isSubmitting}
                 className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
               >
-                {isSubmitting ? 'Generating Link...' : 'Generate Shareable Link'}
+                {isSubmitting ? 'Sharing...' : 'Share Binder'}
               </button>
             </form>
           )}

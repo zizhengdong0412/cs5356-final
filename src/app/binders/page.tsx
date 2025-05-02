@@ -18,7 +18,17 @@ export default async function BindersPage() {
     ORDER BY updated_at DESC
   `);
 
+  // Get binders shared with the current user
+  const sharedResults = await db.execute(sql`
+    SELECT b.id, b.user_id, b.title, b.created_at, b.updated_at, sb.permission
+    FROM shared_binders sb
+    JOIN binders b ON sb.binder_id = b.id
+    WHERE sb.shared_with_id = ${session.user.id} AND sb.is_active = true
+    ORDER BY b.updated_at DESC
+  `);
+
   const userBinders = binderResults as any[];
+  const sharedBinders = sharedResults as any[];
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -72,6 +82,32 @@ export default async function BindersPage() {
               </div>
             </Link>
           ))}
+        </div>
+      )}
+
+      {/* Shared With Me */}
+      {sharedBinders.length > 0 && (
+        <div className="mt-12">
+          <h2 className="text-2xl font-bold mb-4">Shared With Me</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {sharedBinders.map((binder) => (
+              <Link
+                key={binder.id}
+                href={`/binders/${binder.id}`}
+                className="block bg-blue-50 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition border border-blue-200"
+              >
+                <div className="p-6">
+                  <h2 className="text-xl font-bold mb-2 truncate">{binder.title}</h2>
+                  <div className="text-gray-500 text-sm">
+                    Shared permission: {binder.permission}
+                  </div>
+                  <div className="text-gray-400 text-xs mt-1">
+                    Last updated: {new Date(binder.updated_at).toLocaleDateString()}
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
         </div>
       )}
 

@@ -44,6 +44,18 @@ export default function RecipePage({ params }: { params: { id: string } }) {
   const [shareResult, setShareResult] = useState<{shareLink?: string; error?: string} | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Determine if the current user is the owner
+  const [sessionUserId, setSessionUserId] = useState<string | null>(null);
+  useEffect(() => {
+    (async () => {
+      const res = await fetch('/api/auth/session');
+      if (res.ok) {
+        const data = await res.json();
+        setSessionUserId(data?.user?.id || null);
+      }
+    })();
+  }, []);
+
   useEffect(() => {
     const fetchRecipe = async () => {
       try {
@@ -53,7 +65,13 @@ export default function RecipePage({ params }: { params: { id: string } }) {
         });
         
         if (!response.ok) {
-          throw new Error(`Failed to fetch recipe: ${response.status}`);
+          if (response.status === 403) {
+            setError('You do not have permission to view this recipe.');
+            setRecipe(null);
+            return;
+          } else {
+            throw new Error(`Failed to fetch recipe: ${response.status}`);
+          }
         }
         
         const data = await response.json();
@@ -126,12 +144,13 @@ export default function RecipePage({ params }: { params: { id: string } }) {
       setShareLoading(true);
       setShareResult(null);
       
-      const response = await fetch(`/api/recipes/${params.id}/share`, {
+      const response = await fetch(`/api/recipes/share`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
+          recipeId: params.id,
           email: shareEmail.trim() || null,
           permission: sharePermission
         }),
@@ -180,23 +199,32 @@ export default function RecipePage({ params }: { params: { id: string } }) {
   if (error || !recipe) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
           {error || 'Recipe not found'}
+        </div>
+        <div className="flex justify-center">
+          <Link href="/recipes" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+            Back to Recipes
+          </Link>
         </div>
       </div>
     );
   }
+
+  const isOwner = sessionUserId && recipe.user_id === sessionUserId;
 
   // Parse the recipe for display
   const parsedRecipe = parseRecipeJsonData(recipe);
 
   return (
     <main className="container mx-auto px-4 py-8">
-      <RecipeDisplay 
-        {...parsedRecipe} 
-        onEdit={handleEdit}
-        onDelete={() => setShowDeleteModal(true)}
-        onShare={() => setShowShareModal(true)}
+      <RecipeDisplay
+        {...parsedRecipe}
+        {...(isOwner ? {
+          onEdit: handleEdit,
+          onDelete: () => setShowDeleteModal(true),
+          onShare: () => setShowShareModal(true),
+        } : {})}
       />
       
       {/* Delete Confirmation Modal */}

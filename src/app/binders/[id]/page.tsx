@@ -15,19 +15,32 @@ export default async function BinderDetailPage({ params }: { params: { id: strin
 
   const binderId = params.id;
 
-  // Check if the binder exists and belongs to the user using raw SQL
-  const binderResults = await db.execute(sql`
+  // Try to get the binder as owner
+  let binderResults = await db.execute(sql`
     SELECT id, user_id, title, created_at, updated_at
     FROM binders
     WHERE id = ${binderId} AND user_id = ${session.user.id}
     LIMIT 1
   `);
 
-  if (binderResults.length === 0) {
-    redirect('/binders');
-  }
+  let isOwner = binderResults.length > 0;
+  let binder = binderResults[0] as any;
 
-  const binder = binderResults[0] as any;
+  // If not owner, check if shared with user
+  if (!isOwner) {
+    const sharedResults = await db.execute(sql`
+      SELECT b.id, b.user_id, b.title, b.created_at, b.updated_at, sb.permission
+      FROM shared_binders sb
+      JOIN binders b ON sb.binder_id = b.id
+      WHERE b.id = ${binderId} AND sb.shared_with_id = ${session.user.id} AND sb.is_active = true
+      LIMIT 1
+    `);
+    if (sharedResults.length === 0) {
+      redirect('/binders');
+    }
+    binder = sharedResults[0] as any;
+    isOwner = false;
+  }
 
   // Get recipes in this binder
   const recipesInBinder = await db.execute(sql`
@@ -45,41 +58,22 @@ export default async function BinderDetailPage({ params }: { params: { id: strin
           <h1 className="text-3xl font-bold">{binder.title}</h1>
           {/* Description removed as it doesn't exist in the database */}
         </div>
-        <BinderActions binder={{
-          id: binder.id,
-          title: binder.title,
-          user_id: binder.user_id,
-          created_at: binder.created_at,
-          updated_at: binder.updated_at,
-        }} />
+        {isOwner && (
+          <BinderActions binder={{
+            id: binder.id,
+            title: binder.title,
+            user_id: binder.user_id,
+            created_at: binder.created_at,
+            updated_at: binder.updated_at,
+          }} />
+        )}
       </div>
 
       <div className="bg-white rounded-lg shadow-md p-6 mb-8">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold">Recipes in this Binder</h2>
-          <div className="flex space-x-3">
-            <Link
-              href={`/binders/${binderId}/add-recipe`}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
-            >
-              Create New Recipe
-            </Link>
-            <Link
-              href={`/binders/${binderId}/add-recipes`}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
-            >
-              Add Existing Recipes
-            </Link>
-          </div>
-        </div>
-
-        {recipesInBinder.length === 0 ? (
-          <div className="bg-gray-50 rounded-lg p-8 text-center">
-            <h3 className="text-lg font-medium mb-2">No recipes yet</h3>
-            <p className="text-gray-500 mb-4">
-              Add or create some recipes in your binder to get started.
-            </p>
-            <div className="flex justify-center space-x-4">
+          {isOwner && (
+            <div className="flex space-x-3">
               <Link
                 href={`/binders/${binderId}/add-recipe`}
                 className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
@@ -93,6 +87,31 @@ export default async function BinderDetailPage({ params }: { params: { id: strin
                 Add Existing Recipes
               </Link>
             </div>
+          )}
+        </div>
+
+        {recipesInBinder.length === 0 ? (
+          <div className="bg-gray-50 rounded-lg p-8 text-center">
+            <h3 className="text-lg font-medium mb-2">No recipes yet</h3>
+            <p className="text-gray-500 mb-4">
+              Add or create some recipes in your binder to get started.
+            </p>
+            {isOwner && (
+              <div className="flex justify-center space-x-4">
+                <Link
+                  href={`/binders/${binderId}/add-recipe`}
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
+                >
+                  Create New Recipe
+                </Link>
+                <Link
+                  href={`/binders/${binderId}/add-recipes`}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                >
+                  Add Existing Recipes
+                </Link>
+              </div>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -114,16 +133,17 @@ export default async function BinderDetailPage({ params }: { params: { id: strin
         )}
       </div>
 
-      {/* Fixed action button for creating recipes */}
-      <Link
-        href={`/binders/${binderId}/add-recipe`}
-        className="fixed bottom-6 right-6 bg-green-600 hover:bg-green-700 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-colors"
-        aria-label="Create Recipe"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-        </svg>
-      </Link>
+      {isOwner && (
+        <Link
+          href={`/binders/${binderId}/add-recipe`}
+          className="fixed bottom-6 right-6 bg-green-600 hover:bg-green-700 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-colors"
+          aria-label="Create Recipe"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+        </Link>
+      )}
     </div>
   );
 } 
