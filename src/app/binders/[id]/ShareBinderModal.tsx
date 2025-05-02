@@ -37,6 +37,9 @@ export default function ShareBinderModal({
   const [existingShares, setExistingShares] = useState<ShareBinder[]>([]);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState('');
+  const [permission, setPermission] = useState<'view' | 'edit' | 'admin'>('view');
+  const [currentUserEmail, setCurrentUserEmail] = useState('');
+  const [selfShareError, setSelfShareError] = useState('');
 
   // Load existing shares
   useEffect(() => {
@@ -57,11 +60,30 @@ export default function ShareBinderModal({
     fetchShares();
   }, [binder.id]);
 
+  // Fetch current user email on mount
+  useEffect(() => {
+    (async () => {
+      const res = await fetch('/api/auth/session');
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentUserEmail(data?.user?.email || '');
+      }
+    })();
+  }, []);
+
   const handleShare = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsSubmitting(true);
     setShowSuccess(false);
+    setSelfShareError('');
+
+    // Prevent sharing with self
+    if (email && email.trim().toLowerCase() === currentUserEmail.toLowerCase()) {
+      setSelfShareError('You cannot share a binder with yourself.');
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
       const response = await fetch(`/api/binders/${binder.id}/share`, {
@@ -70,7 +92,7 @@ export default function ShareBinderModal({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          permission: 'view',
+          permission,
           ...(email ? { email } : {}),
         }),
       });
@@ -196,6 +218,19 @@ export default function ShareBinderModal({
                 onChange={e => setEmail(e.target.value)}
                 className="w-full mb-4 px-3 py-2 border rounded focus:outline-none focus:ring"
               />
+              <label className="block mb-2 font-medium">Permission</label>
+              <select
+                value={permission}
+                onChange={e => setPermission(e.target.value as 'view' | 'edit' | 'admin')}
+                className="w-full mb-4 px-3 py-2 border rounded focus:outline-none focus:ring"
+              >
+                <option value="view">View only</option>
+                <option value="edit">Can edit</option>
+                <option value="admin">Full access</option>
+              </select>
+              {selfShareError && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-2">{selfShareError}</div>
+              )}
               <button
                 type="submit"
                 disabled={isSubmitting}

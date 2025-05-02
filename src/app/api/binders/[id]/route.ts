@@ -114,7 +114,11 @@ export async function PUT(
     const body = await request.json();
     const { title, description } = body;
 
-    // Ensure binder exists and belongs to user
+    // Ensure binder exists and check permissions
+    let canEdit = false;
+    let canDelete = false;
+
+    // Check if user is owner
     const binderResults = await db.execute(sql`
       SELECT id
       FROM binders
@@ -122,10 +126,35 @@ export async function PUT(
       LIMIT 1
     `);
 
-    if (binderResults.length === 0) {
+    if (binderResults.length > 0) {
+      canEdit = true;
+      canDelete = true;
+    } else {
+      // Check shared permissions
+      const sharedResults = await db.execute(sql`
+        SELECT permission
+        FROM shared_binders
+        WHERE binder_id = ${binderId}
+          AND shared_with_id = ${session.user.id}
+          AND is_active = true
+        LIMIT 1
+      `);
+
+      if (sharedResults.length > 0) {
+        const permission = sharedResults[0].permission;
+        if (permission === 'edit' || permission === 'admin') {
+          canEdit = true;
+        }
+        if (permission === 'admin') {
+          canDelete = true;
+        }
+      }
+    }
+
+    if (!canEdit) {
       return NextResponse.json(
-        { error: 'Binder not found or unauthorized' },
-        { status: 404 }
+        { error: 'You do not have permission to update this binder' },
+        { status: 403 }
       );
     }
 
@@ -165,7 +194,10 @@ export async function DELETE(
   const binderId = params.id;
 
   try {
-    // Ensure binder exists and belongs to user
+    // Ensure binder exists and check permissions
+    let canDelete = false;
+
+    // Check if user is owner
     const binderResults = await db.execute(sql`
       SELECT id
       FROM binders
@@ -173,10 +205,28 @@ export async function DELETE(
       LIMIT 1
     `);
 
-    if (binderResults.length === 0) {
+    if (binderResults.length > 0) {
+      canDelete = true;
+    } else {
+      // Check shared permissions
+      const sharedResults = await db.execute(sql`
+        SELECT permission
+        FROM shared_binders
+        WHERE binder_id = ${binderId}
+          AND shared_with_id = ${session.user.id}
+          AND is_active = true
+        LIMIT 1
+      `);
+
+      if (sharedResults.length > 0 && sharedResults[0].permission === 'admin') {
+        canDelete = true;
+      }
+    }
+
+    if (!canDelete) {
       return NextResponse.json(
-        { error: 'Binder not found or unauthorized' },
-        { status: 404 }
+        { error: 'You do not have permission to delete this binder' },
+        { status: 403 }
       );
     }
 
@@ -195,7 +245,7 @@ export async function DELETE(
     // Delete binder
     await db.execute(sql`
       DELETE FROM binders
-      WHERE id = ${binderId} AND user_id = ${session.user.id}
+      WHERE id = ${binderId}
     `);
 
     return NextResponse.json({ success: true });

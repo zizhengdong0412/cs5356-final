@@ -40,6 +40,8 @@ export default async function BinderDetailPage({ params }: { params: { id: strin
     }
     binder = sharedResults[0] as any;
     isOwner = false;
+    // Add sharedPermission to binder
+    binder.sharedPermission = sharedResults[0].permission;
   }
 
   // Get recipes in this binder
@@ -50,6 +52,9 @@ export default async function BinderDetailPage({ params }: { params: { id: strin
     WHERE br.binder_id = ${binderId}
     ORDER BY br.added_at DESC
   `);
+
+  // Determine if user can edit (owner or sharedPermission is edit/admin)
+  const canEdit = isOwner || (binder.sharedPermission === 'edit' || binder.sharedPermission === 'admin');
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -72,7 +77,7 @@ export default async function BinderDetailPage({ params }: { params: { id: strin
       <div className="bg-white rounded-lg shadow-md p-6 mb-8">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold">Recipes in this Binder</h2>
-          {isOwner && (
+          {canEdit && (
             <div className="flex space-x-3">
               <Link
                 href={`/binders/${binderId}/add-recipe`}
@@ -96,7 +101,7 @@ export default async function BinderDetailPage({ params }: { params: { id: strin
             <p className="text-gray-500 mb-4">
               Add or create some recipes in your binder to get started.
             </p>
-            {isOwner && (
+            {canEdit && (
               <div className="flex justify-center space-x-4">
                 <Link
                   href={`/binders/${binderId}/add-recipe`}
@@ -116,7 +121,7 @@ export default async function BinderDetailPage({ params }: { params: { id: strin
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {recipesInBinder.map((recipe: any) => (
-              <RecipeCard 
+              <RecipeCard
                 key={recipe.id}
                 recipe={{
                   id: recipe.id,
@@ -127,13 +132,15 @@ export default async function BinderDetailPage({ params }: { params: { id: strin
                   thumbnail: recipe.thumbnail,
                   createdAt: recipe.created_at
                 }}
+                canEdit={canEdit}
+                canDelete={canEdit && (isOwner || binder.sharedPermission === 'admin')}
               />
             ))}
           </div>
         )}
       </div>
 
-      {isOwner && (
+      {canEdit && (
         <Link
           href={`/binders/${binderId}/add-recipe`}
           className="fixed bottom-6 right-6 bg-green-600 hover:bg-green-700 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-colors"

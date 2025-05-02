@@ -15,13 +15,16 @@ interface RecipeProps {
     thumbnail?: string;
     createdAt: string;
   };
+  canEdit?: boolean;
+  canDelete?: boolean;
 }
 
-export default function RecipeCard({ recipe }: RecipeProps) {
+export default function RecipeCard({ recipe, canEdit = false, canDelete = false }: RecipeProps) {
   const router = useRouter();
   const [showActions, setShowActions] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showPermissionError, setShowPermissionError] = useState(false);
 
   const handleEdit = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -38,6 +41,12 @@ export default function RecipeCard({ recipe }: RecipeProps) {
   const handleDelete = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    if (!canDelete) {
+      setShowPermissionError(true);
+      setTimeout(() => setShowPermissionError(false), 3000);
+      return;
+    }
     
     if (!showDeleteConfirm) {
       setShowDeleteConfirm(true);
@@ -112,7 +121,7 @@ export default function RecipeCard({ recipe }: RecipeProps) {
         )}
         
         {/* Action buttons overlay */}
-        {showActions && (
+        {showActions && canEdit && (
           <div className="absolute top-2 right-2 flex gap-2 z-10">
             <button
               onClick={handleEdit}
@@ -169,6 +178,13 @@ export default function RecipeCard({ recipe }: RecipeProps) {
           )}
         </div>
       </div>
+
+      {/* Permission Error Toast */}
+      {showPermissionError && (
+        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded shadow-lg z-20">
+          You need admin permission to delete recipes
+        </div>
+      )}
     </Link>
   );
 } 

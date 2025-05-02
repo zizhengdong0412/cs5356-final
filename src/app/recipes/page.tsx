@@ -5,6 +5,7 @@ import { getSessionFromCookie } from '@/lib/session-helper';
 import { eq } from 'drizzle-orm';
 import { recipes, binders } from '@/schema';
 import { sql } from 'drizzle-orm';
+import RecipeCard from '@/components/RecipeCard';
 
 export default async function RecipesPage() {
   const session = await getSessionFromCookie();
@@ -132,21 +133,20 @@ export default async function RecipesPage() {
           <h2 className="text-2xl font-bold mb-4">Shared With Me</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {sharedRecipes.map((recipe) => (
-              <Link
+              <RecipeCard
                 key={recipe.id}
-                href={`/recipes/${recipe.id}`}
-                className="block bg-blue-50 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition border border-blue-200"
-              >
-                <div className="p-6">
-                  <h2 className="text-xl font-bold mb-2 truncate">{recipe.title}</h2>
-                  <div className="text-gray-500 text-sm">
-                    Shared permission: {recipe.permission}
-                  </div>
-                  <div className="text-gray-400 text-xs mt-1">
-                    Created: {new Date(recipe.created_at).toLocaleDateString()}
-                  </div>
-                </div>
-              </Link>
+                recipe={{
+                  id: recipe.id,
+                  title: recipe.title,
+                  description: recipe.description,
+                  cookingTime: recipe.cooking_time,
+                  servings: recipe.servings,
+                  thumbnail: recipe.thumbnail,
+                  createdAt: recipe.created_at
+                }}
+                canEdit={recipe.permission === 'edit' || recipe.permission === 'admin'}
+                canDelete={recipe.permission === 'admin'}
+              />
             ))}
           </div>
         </div>

@@ -51,12 +51,16 @@ export async function POST(request: NextRequest) {
     // 如果提供了邮箱，查找用户
     if (email) {
       const userLookup = await db
-        .select({ id: users.id })
+        .select({ id: users.id, email: users.email })
         .from(users)
         .where(eq(users.email, email))
         .limit(1);
       
       if (userLookup.length > 0) {
+        // Prevent sharing with self
+        if (userLookup[0].id === user.id) {
+          return NextResponse.json({ error: 'You cannot share a recipe with yourself.' }, { status: 400 });
+        }
         sharedWithId = userLookup[0].id;
       }
     }

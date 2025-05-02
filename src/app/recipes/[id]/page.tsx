@@ -46,12 +46,16 @@ export default function RecipePage({ params }: { params: { id: string } }) {
 
   // Determine if the current user is the owner
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
+  const [currentUserEmail, setCurrentUserEmail] = useState('');
+  const [selfShareError, setSelfShareError] = useState('');
+
   useEffect(() => {
     (async () => {
       const res = await fetch('/api/auth/session');
       if (res.ok) {
         const data = await res.json();
         setSessionUserId(data?.user?.id || null);
+        setCurrentUserEmail(data?.user?.email || '');
       }
     })();
   }, []);
@@ -143,6 +147,13 @@ export default function RecipePage({ params }: { params: { id: string } }) {
     try {
       setShareLoading(true);
       setShareResult(null);
+      setSelfShareError('');
+      // Prevent sharing with self
+      if (shareEmail.trim() && shareEmail.trim().toLowerCase() === currentUserEmail.toLowerCase()) {
+        setSelfShareError('You cannot share a recipe with yourself.');
+        setShareLoading(false);
+        return;
+      }
       
       const response = await fetch(`/api/recipes/share`, {
         method: 'POST',
@@ -342,6 +353,9 @@ export default function RecipePage({ params }: { params: { id: string } }) {
                     <option value="admin">Full access</option>
                   </select>
                 </div>
+                {selfShareError && (
+                  <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-2">{selfShareError}</div>
+                )}
               </div>
             )}
             

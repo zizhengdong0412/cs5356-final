@@ -150,7 +150,26 @@ async function updateRecipe(request: NextRequest, params: { id: string }) {
     }
 
     // Check if the user is the owner of the recipe
-    if (session.user && existingRecipe.user_id !== session.user.id) {
+    let canEdit = false;
+    if (session.user && existingRecipe.user_id === session.user.id) {
+      canEdit = true;
+    } else if (session.user) {
+      // Check if user has edit or admin permission in shared_recipes
+      const shared = await db.execute(sql`
+        SELECT permission FROM shared_recipes
+        WHERE recipe_id = ${params.id}
+          AND shared_with_id = ${session.user.id}
+          AND is_active = true
+        LIMIT 1
+      `);
+      if (
+        shared.length > 0 &&
+        (shared[0].permission === 'edit' || shared[0].permission === 'admin')
+      ) {
+        canEdit = true;
+      }
+    }
+    if (!canEdit) {
       return NextResponse.json(
         { error: 'You do not have permission to update this recipe' },
         { status: 403 }
@@ -243,7 +262,23 @@ export async function DELETE(
     }
 
     // Check if the user is the owner of the recipe
-    if (session.user && existingRecipe.user_id !== session.user.id) {
+    let canDelete = false;
+    if (session.user && existingRecipe.user_id === session.user.id) {
+      canDelete = true;
+    } else if (session.user) {
+      // Check if user has admin permission in shared_recipes
+      const shared = await db.execute(sql`
+        SELECT permission FROM shared_recipes
+        WHERE recipe_id = ${params.id}
+          AND shared_with_id = ${session.user.id}
+          AND is_active = true
+        LIMIT 1
+      `);
+      if (shared.length > 0 && shared[0].permission === 'admin') {
+        canDelete = true;
+      }
+    }
+    if (!canDelete) {
       return NextResponse.json(
         { error: 'You do not have permission to delete this recipe' },
         { status: 403 }

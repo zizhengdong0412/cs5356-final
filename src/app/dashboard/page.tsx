@@ -92,6 +92,8 @@ export default async function DashboardPage() {
                   thumbnail: recipe.thumbnail,
                   createdAt: recipe.created_at
                 }}
+                canEdit={true}
+                canDelete={true}
               />
             ))}
           </div>

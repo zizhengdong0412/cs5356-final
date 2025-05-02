@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { and, eq } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { getSessionFromCookie } from '@/lib/session-helper';
-import { binders, binder_recipes, recipes } from '@/schema';
+import { binders, binder_recipes, recipes, shared_binders } from '@/schema';
 
 // Add recipe(s) to a binder
 export async function POST(
@@ -22,7 +22,10 @@ export async function POST(
       return NextResponse.json({ error: "Recipe IDs are required" }, { status: 400 });
     }
 
-    // Check if the binder exists and belongs to the user
+    // Check if the binder exists and check permissions
+    let canEdit = false;
+
+    // Check if user is owner
     const binderCheck = await db
       .select()
       .from(binders)
@@ -34,8 +37,32 @@ export async function POST(
       )
       .limit(1);
 
-    if (binderCheck.length === 0) {
-      return NextResponse.json({ error: "Binder not found" }, { status: 404 });
+    if (binderCheck.length > 0) {
+      canEdit = true;
+    } else {
+      // Check shared permissions
+      const sharedCheck = await db
+        .select()
+        .from(shared_binders)
+        .where(
+          and(
+            eq(shared_binders.binder_id, binderId),
+            eq(shared_binders.shared_with_id, session.user.id),
+            eq(shared_binders.is_active, true)
+          )
+        )
+        .limit(1);
+
+      if (sharedCheck.length > 0) {
+        const permission = sharedCheck[0].permission;
+        if (permission === 'edit' || permission === 'admin') {
+          canEdit = true;
+        }
+      }
+    }
+
+    if (!canEdit) {
+      return NextResponse.json({ error: "You do not have permission to modify this binder" }, { status: 403 });
     }
 
     // Check if all recipes exist and belong to the user
@@ -95,7 +122,10 @@ export async function DELETE(
       return NextResponse.json({ error: "Recipe ID is required" }, { status: 400 });
     }
 
-    // Check if the binder exists and belongs to the user
+    // Check if the binder exists and check permissions
+    let canEdit = false;
+
+    // Check if user is owner
     const binderCheck = await db
       .select()
       .from(binders)
@@ -107,8 +137,32 @@ export async function DELETE(
       )
       .limit(1);
 
-    if (binderCheck.length === 0) {
-      return NextResponse.json({ error: "Binder not found" }, { status: 404 });
+    if (binderCheck.length > 0) {
+      canEdit = true;
+    } else {
+      // Check shared permissions
+      const sharedCheck = await db
+        .select()
+        .from(shared_binders)
+        .where(
+          and(
+            eq(shared_binders.binder_id, binderId),
+            eq(shared_binders.shared_with_id, session.user.id),
+            eq(shared_binders.is_active, true)
+          )
+        )
+        .limit(1);
+
+      if (sharedCheck.length > 0) {
+        const permission = sharedCheck[0].permission;
+        if (permission === 'edit' || permission === 'admin') {
+          canEdit = true;
+        }
+      }
+    }
+
+    if (!canEdit) {
+      return NextResponse.json({ error: "You do not have permission to modify this binder" }, { status: 403 });
     }
 
     // Remove the recipe from the binder
