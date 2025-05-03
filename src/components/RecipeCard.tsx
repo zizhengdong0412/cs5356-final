@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 
 interface RecipeProps {
   recipe: {
@@ -22,10 +22,12 @@ interface RecipeProps {
 
 export default function RecipeCard({ recipe, canEdit = false, canDelete = false, onDelete }: RecipeProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [showActions, setShowActions] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showPermissionError, setShowPermissionError] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const handleEdit = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -42,30 +44,28 @@ export default function RecipeCard({ recipe, canEdit = false, canDelete = false,
   const handleDelete = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
     if (!canDelete) {
       setShowPermissionError(true);
       setTimeout(() => setShowPermissionError(false), 3000);
       return;
     }
-    
-    if (!showDeleteConfirm) {
-      setShowDeleteConfirm(true);
-      return;
-    }
+    setShowDeleteModal(true);
+  };
 
+  const confirmDelete = async () => {
     try {
       setIsDeleting(true);
       const response = await fetch(`/api/recipes/${recipe.id}`, {
         method: 'DELETE',
         credentials: 'include'
       });
-      
       if (!response.ok) {
         throw new Error(`Failed to delete recipe: ${response.status}`);
       }
-      
-      if (onDelete) {
+      // If on the detail page for this recipe, redirect to /recipes
+      if (pathname === `/recipes/${recipe.id}`) {
+        router.push('/recipes');
+      } else if (onDelete) {
         onDelete(recipe.id);
       } else {
         router.refresh();
@@ -75,7 +75,7 @@ export default function RecipeCard({ recipe, canEdit = false, canDelete = false,
       alert('Failed to delete recipe');
     } finally {
       setIsDeleting(false);
-      setShowDeleteConfirm(false);
+      setShowDeleteModal(false);
     }
   };
 
@@ -85,30 +85,21 @@ export default function RecipeCard({ recipe, canEdit = false, canDelete = false,
     router.push(`/recipes/${recipe.id}?share=true`);
   };
 
+  // Navigation handler for the card
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (showDeleteModal) return; // Block navigation if modal is open
+    if ((e.target as HTMLElement).closest('.recipe-action-btn')) return;
+    router.push(`/recipes/${recipe.id}`);
+  };
+
   return (
-    <Link 
-      href={`/recipes/${recipe.id}`}
-      className="group bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition relative"
-      onMouseEnter={() => setShowActions(true)} 
+    <div
+      className="group bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition relative cursor-pointer"
+      onClick={handleCardClick}
+      onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => {
         setShowActions(false);
         setShowDeleteConfirm(false);
-      }}
-      onClick={(e) => {
-        // If this is a direct click (not on one of the action buttons)
-        if ((e.target as HTMLElement).tagName !== 'BUTTON' && 
-            !((e.target as HTMLElement).closest('button'))) {
-          // Prevent default link behavior
-          e.preventDefault();
-          
-          // Try router navigation first
-          try {
-            router.push(`/recipes/${recipe.id}`);
-          } catch (error) {
-            console.error('Navigation error:', error);
-            window.location.href = `/recipes/${recipe.id}`;
-          }
-        }
       }}
     >
       <div className="relative w-full h-48">
@@ -130,7 +121,7 @@ export default function RecipeCard({ recipe, canEdit = false, canDelete = false,
           <div className="absolute top-2 right-2 flex gap-2 z-10">
             <button
               onClick={handleEdit}
-              className="bg-white bg-opacity-90 p-2 rounded-full hover:bg-blue-500 hover:text-white transition-colors"
+              className="recipe-action-btn bg-white bg-opacity-90 p-2 rounded-full hover:bg-blue-500 hover:text-white transition-colors"
               title="Edit recipe"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -140,7 +131,7 @@ export default function RecipeCard({ recipe, canEdit = false, canDelete = false,
             
             <button
               onClick={handleShare}
-              className="bg-white bg-opacity-90 p-2 rounded-full hover:bg-green-500 hover:text-white transition-colors"
+              className="recipe-action-btn bg-white bg-opacity-90 p-2 rounded-full hover:bg-green-500 hover:text-white transition-colors"
               title="Share recipe"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -150,7 +141,7 @@ export default function RecipeCard({ recipe, canEdit = false, canDelete = false,
             
             <button
               onClick={handleDelete}
-              className={`bg-white bg-opacity-90 p-2 rounded-full ${showDeleteConfirm ? 'bg-red-500 text-white' : 'hover:bg-red-500 hover:text-white'} transition-colors`}
+              className={`recipe-action-btn bg-white bg-opacity-90 p-2 rounded-full ${showDeleteConfirm ? 'bg-red-500 text-white' : 'hover:bg-red-500 hover:text-white'} transition-colors`}
               title={showDeleteConfirm ? 'Confirm delete' : 'Delete recipe'}
               disabled={isDeleting}
             >
@@ -190,6 +181,32 @@ export default function RecipeCard({ recipe, canEdit = false, canDelete = false,
           You need admin permission to delete recipes
         </div>
       )}
-    </Link>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <h3 className="text-xl font-bold mb-4">Delete Recipe</h3>
+            <p className="mb-6">Are you sure you want to delete this recipe? This action cannot be undone.</p>
+            <div className="flex justify-end space-x-3">
+              <button 
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button 
+                className="px-4 py-2 bg-red-600 text-white rounded-md"
+                onClick={confirmDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 } 
