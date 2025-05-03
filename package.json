@@ -14,6 +14,8 @@
     "@auth/drizzle-adapter": "^1.9.0",
     "@bull-board/api": "^6.9.2",
     "@bull-board/express": "^6.9.2",
+    "@headlessui/react": "^2.2.2",
+    "@heroicons/react": "^2.2.0",
     "@sendgrid/mail": "^8.1.5",
     "axios": "^1.8.4",
     "bcryptjs": "^3.0.2",
@@ -27,6 +29,7 @@
     "pg": "^8.15.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-hot-toast": "^2.5.2",
     "sonner": "^2.0.3",
     "uuid": "^11.1.0"
   },

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
+import ShareRecipeModal from './ShareRecipeModal';
 
 interface RecipeProps {
   recipe: {
@@ -28,6 +29,7 @@ export default function RecipeCard({ recipe, canEdit = false, canDelete = false,
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showPermissionError, setShowPermissionError] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   const handleEdit = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -82,7 +84,7 @@ export default function RecipeCard({ recipe, canEdit = false, canDelete = false,
   const handleShare = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    router.push(`/recipes/${recipe.id}?share=true`);
+    setShowShareModal(true);
   };
 
   // Navigation handler for the card
@@ -207,6 +209,14 @@ export default function RecipeCard({ recipe, canEdit = false, canDelete = false,
           </div>
         </div>
       )}
+
+      {/* Place ShareRecipeModal at the root so it overlays the card */}
+      <ShareRecipeModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        recipeId={recipe.id}
+        recipeName={recipe.title}
+      />
     </div>
   );
 } 
