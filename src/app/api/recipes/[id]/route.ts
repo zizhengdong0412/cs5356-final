@@ -84,6 +84,25 @@ export async function GET(
       }
     }
 
+    // If not owner, direct share, or share link, check if recipe is in a binder shared with the user
+    if (!recipe && userId) {
+      const sharedBinder = await db.execute(sql`
+        SELECT r.*
+        FROM binder_recipes br
+        JOIN shared_binders sb ON br.binder_id = sb.binder_id
+        JOIN recipes r ON br.recipe_id = r.id
+        WHERE br.recipe_id = ${params.id}
+          AND sb.shared_with_id = ${userId}
+          AND sb.is_active = true
+          AND (sb.permission = 'view' OR sb.permission = 'edit' OR sb.permission = 'admin')
+        LIMIT 1
+      `);
+      if (sharedBinder.length > 0) {
+        recipe = sharedBinder[0];
+        sharedPermission = sharedBinder[0].permission || 'view';
+      }
+    }
+
     if (!recipe) {
       return NextResponse.json(
         { error: 'You do not have access to this recipe' },
@@ -167,6 +186,22 @@ async function updateRecipe(request: NextRequest, params: { id: string }) {
         (shared[0].permission === 'edit' || shared[0].permission === 'admin')
       ) {
         canEdit = true;
+      }
+      // Check if user has edit/admin permission on a binder containing the recipe
+      if (!canEdit) {
+        const sharedBinder = await db.execute(sql`
+          SELECT 1
+          FROM binder_recipes br
+          JOIN shared_binders sb ON br.binder_id = sb.binder_id
+          WHERE br.recipe_id = ${params.id}
+            AND sb.shared_with_id = ${session.user.id}
+            AND sb.is_active = true
+            AND (sb.permission = 'edit' OR sb.permission = 'admin')
+          LIMIT 1
+        `);
+        if (sharedBinder.length > 0) {
+          canEdit = true;
+        }
       }
     }
     if (!canEdit) {
@@ -276,6 +311,22 @@ export async function DELETE(
       `);
       if (shared.length > 0 && shared[0].permission === 'admin') {
         canDelete = true;
+      }
+      // Check if user has admin permission on a binder containing the recipe
+      if (!canDelete) {
+        const sharedBinder = await db.execute(sql`
+          SELECT 1
+          FROM binder_recipes br
+          JOIN shared_binders sb ON br.binder_id = sb.binder_id
+          WHERE br.recipe_id = ${params.id}
+            AND sb.shared_with_id = ${session.user.id}
+            AND sb.is_active = true
+            AND sb.permission = 'admin'
+          LIMIT 1
+        `);
+        if (sharedBinder.length > 0) {
+          canDelete = true;
+        }
       }
     }
     if (!canDelete) {
