@@ -19,12 +19,28 @@ export default async function DashboardPage() {
     ORDER BY created_at DESC
   `);
 
+  // Get recipes shared directly with the user
+  const sharedRecipesData = await db.execute(sql`
+    SELECT r.id, r.title, r.description, r.cooking_time, r.servings, r.thumbnail, r.created_at, sr.permission
+    FROM shared_recipes sr
+    JOIN recipes r ON sr.recipe_id = r.id
+    WHERE sr.shared_with_id = ${session.user.id} AND sr.is_active = true
+    ORDER BY r.created_at DESC
+  `);
+
   // Compute canEdit and canDelete for each recipe
-  const recipesWithPermissions = userRecipesData.map((recipe: any) => ({
-    ...recipe,
-    canEdit: true,
-    canDelete: true,
-  }));
+  const recipesWithPermissions = [
+    ...userRecipesData.map((recipe: any) => ({
+      ...recipe,
+      canEdit: true,
+      canDelete: true,
+    })),
+    ...sharedRecipesData.map((recipe: any) => ({
+      ...recipe,
+      canEdit: recipe.permission === 'edit' || recipe.permission === 'admin',
+      canDelete: recipe.permission === 'admin',
+    })),
+  ];
 
   // Check if the user has any binders
   const binderCount = await db.execute(sql`

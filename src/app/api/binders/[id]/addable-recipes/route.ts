@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getSessionFromCookie } from '@/lib/session-helper';
-import { recipes, binder_recipes } from '@/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { recipes, binder_recipes, shared_recipes } from '@/schema';
+import { eq, and, sql, or } from 'drizzle-orm';
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   const session = await getSessionFromCookie();
@@ -18,25 +18,34 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     .where(eq(binder_recipes.binder_id, binderId));
   const inBinderIds = inBinder.map(r => r.recipe_id);
 
-  let addableRecipes;
-  if (inBinderIds.length > 0) {
-    // Inject UUIDs directly as a comma-separated list
-    const idList = inBinderIds.map(id => `'${id}'`).join(',');
-    addableRecipes = await db
+  // Get recipes owned by the user
+  const ownedRecipes = await db
+    .select()
+    .from(recipes)
+    .where(eq(recipes.user_id, session.user.id));
+
+  // Get recipes shared with the user
+  const sharedRecipeIds = await db
+    .select({ recipe_id: shared_recipes.recipe_id })
+    .from(shared_recipes)
+    .where(and(
+      eq(shared_recipes.shared_with_id, session.user.id),
+      eq(shared_recipes.is_active, true)
+    ));
+  const sharedIds = sharedRecipeIds.map(r => r.recipe_id);
+  let sharedRecipes: any[] = [];
+  if (sharedIds.length > 0) {
+    const idList = sharedIds.map(id => `'${id}'`).join(',');
+    sharedRecipes = await db
       .select()
       .from(recipes)
-      .where(
-        and(
-          eq(recipes.user_id, session.user.id),
-          sql.raw(`${recipes.id.name} NOT IN (${idList})`)
-        )
-      );
-  } else {
-    addableRecipes = await db
-      .select()
-      .from(recipes)
-      .where(eq(recipes.user_id, session.user.id));
+      .where(sql.raw(`${recipes.id.name} IN (${idList})`));
   }
 
-  return NextResponse.json({ recipes: addableRecipes });
+  // Combine owned and shared recipes, filter out those already in the binder
+  const allAddable = [...ownedRecipes, ...sharedRecipes].filter(
+    r => !inBinderIds.includes(r.id)
+  );
+
+  return NextResponse.json({ recipes: allAddable });
 } 

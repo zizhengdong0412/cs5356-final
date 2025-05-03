@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { and, eq } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { getSessionFromCookie } from '@/lib/session-helper';
-import { binders, binder_recipes, recipes, shared_binders } from '@/schema';
+import { binders, binder_recipes, recipes, shared_binders, shared_recipes } from '@/schema';
 
 // Add recipe(s) to a binder
 export async function POST(
@@ -66,6 +66,7 @@ export async function POST(
     }
 
     // Check if all recipes exist and belong to the user
+    const recipeIdsToAdd = [];
     for (const recipeId of recipeIds) {
       const recipeCheck = await db
         .select()
@@ -78,13 +79,54 @@ export async function POST(
         )
         .limit(1);
 
-      if (recipeCheck.length === 0) {
-        return NextResponse.json({ error: `Recipe with ID ${recipeId} not found` }, { status: 404 });
+      if (recipeCheck.length > 0) {
+        // User owns the recipe, add as is
+        recipeIdsToAdd.push(recipeId);
+      } else {
+        // Try to find a recipe shared with the user
+        const sharedRecipe = await db
+          .select()
+          .from(shared_recipes)
+          .where(
+            and(
+              eq(shared_recipes.recipe_id, recipeId),
+              eq(shared_recipes.shared_with_id, session.user.id),
+              eq(shared_recipes.is_active, true)
+            )
+          )
+          .limit(1);
+        if (sharedRecipe.length > 0) {
+          // Clone the recipe as the user's own
+          const originalRecipe = await db
+            .select()
+            .from(recipes)
+            .where(eq(recipes.id, recipeId))
+            .limit(1);
+          if (originalRecipe.length > 0) {
+            const r = originalRecipe[0];
+            const insertResult = await db.insert(recipes).values({
+              user_id: session.user.id,
+              title: r.title,
+              description: r.description,
+              ingredients: r.ingredients,
+              instructions: r.instructions,
+              cooking_time: r.cooking_time,
+              servings: r.servings,
+              type: r.type,
+              thumbnail: r.thumbnail,
+            }).returning();
+            recipeIdsToAdd.push(insertResult[0].id);
+          } else {
+            return NextResponse.json({ error: `Original recipe with ID ${recipeId} not found` }, { status: 404 });
+          }
+        } else {
+          return NextResponse.json({ error: `Recipe with ID ${recipeId} not found or not accessible` }, { status: 404 });
+        }
       }
     }
 
     // Add recipes to the binder
-    const values = recipeIds.map(recipeId => ({
+    const values = recipeIdsToAdd.map(recipeId => ({
       binder_id: binderId,
       recipe_id: recipeId
     }));
