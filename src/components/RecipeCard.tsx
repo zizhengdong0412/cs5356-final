@@ -19,9 +19,10 @@ interface RecipeProps {
   canEdit?: boolean;
   canDelete?: boolean;
   onDelete?: (id: string) => void;
+  badgeLabel?: string;
 }
 
-export default function RecipeCard({ recipe, canEdit = false, canDelete = false, onDelete }: RecipeProps) {
+export default function RecipeCard({ recipe, canEdit = false, canDelete = false, onDelete, badgeLabel }: RecipeProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [showActions, setShowActions] = useState(false);
@@ -163,7 +164,14 @@ export default function RecipeCard({ recipe, canEdit = false, canDelete = false,
       </div>
       
       <div className="p-4">
-        <h3 className="text-lg font-medium mb-1 truncate">{recipe.title}</h3>
+        <h3 className="text-lg font-medium mb-1 truncate flex items-center gap-2">
+          {recipe.title}
+          {badgeLabel && (
+            <span className="ml-2 px-2 py-0.5 rounded bg-blue-100 text-blue-700 text-xs font-semibold align-middle">
+              {badgeLabel}
+            </span>
+          )}
+        </h3>
         {recipe.description && (
           <p className="text-gray-600 text-sm line-clamp-2 mb-2">{recipe.description}</p>
         )}

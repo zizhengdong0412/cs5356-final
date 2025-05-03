@@ -11,36 +11,39 @@ export default async function DashboardPage() {
     redirect('/auth/sign-in');
   }
 
-  // Get user's recipes
+  // Get user's recipes (include user_id)
   const userRecipesData = await db.execute(sql`
-    SELECT id, title, description, cooking_time, servings, thumbnail, created_at
+    SELECT id, user_id, title, description, cooking_time, servings, thumbnail, created_at
     FROM recipes
     WHERE user_id = ${session.user.id}
     ORDER BY created_at DESC
   `);
 
-  // Get recipes shared directly with the user
+  // Get recipes shared directly with the user (include user_id)
   const sharedRecipesData = await db.execute(sql`
-    SELECT r.id, r.title, r.description, r.cooking_time, r.servings, r.thumbnail, r.created_at, sr.permission
+    SELECT r.id, r.user_id, r.title, r.description, r.cooking_time, r.servings, r.thumbnail, r.created_at, sr.permission
     FROM shared_recipes sr
     JOIN recipes r ON sr.recipe_id = r.id
     WHERE sr.shared_with_id = ${session.user.id} AND sr.is_active = true
     ORDER BY r.created_at DESC
   `);
 
-  // Compute canEdit and canDelete for each recipe
-  const recipesWithPermissions = [
-    ...userRecipesData.map((recipe: any) => ({
-      ...recipe,
-      canEdit: true,
-      canDelete: true,
-    })),
-    ...sharedRecipesData.map((recipe: any) => ({
-      ...recipe,
-      canEdit: recipe.permission === 'edit' || recipe.permission === 'admin',
-      canDelete: recipe.permission === 'admin',
-    })),
-  ];
+  // Separate owned and shared recipes, preferring owned if both exist
+  const ownedRecipeIds = new Set(userRecipesData.map((r: any) => r.id));
+  const sharedRecipesFiltered = sharedRecipesData.filter((r: any) => !ownedRecipeIds.has(r.id));
+
+  const ownedRecipesWithMeta = userRecipesData.map((recipe: any) => ({
+    ...recipe,
+    canEdit: true,
+    canDelete: true,
+    ownership: 'owned',
+  }));
+  const sharedRecipesWithMeta = sharedRecipesFiltered.map((recipe: any) => ({
+    ...recipe,
+    canEdit: recipe.permission === 'edit' || recipe.permission === 'admin',
+    canDelete: recipe.permission === 'admin',
+    ownership: recipe.user_id === session.user.id ? 'owned' : 'shared',
+  })).filter((r: any) => r.ownership === 'shared');
 
   // Check if the user has any binders
   const binderCount = await db.execute(sql`
@@ -80,9 +83,8 @@ export default async function DashboardPage() {
       </div>
 
       <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-        <h2 className="text-xl font-semibold mb-6">My Recent Recipes</h2>
-        
-        {recipesWithPermissions.length === 0 ? (
+        <h2 className="text-xl font-semibold mb-6">My Recipes</h2>
+        {ownedRecipesWithMeta.length === 0 ? (
           <div className="text-center py-10">
             <div className="text-gray-500 mb-4">You haven't created any recipes yet.</div>
             {hasBinders ? (
@@ -102,10 +104,10 @@ export default async function DashboardPage() {
             )}
           </div>
         ) : (
-          <RecipeListClient recipes={recipesWithPermissions} />
+          <RecipeListClient recipes={ownedRecipesWithMeta} badgeLabel="Owned by you" />
         )}
         
-        {recipesWithPermissions.length > 0 && (
+        {ownedRecipesWithMeta.length > 0 && (
           <div className="mt-6 text-center">
             <Link href="/recipes" className="text-blue-600 hover:underline">
               View All Recipes
@@ -113,6 +115,13 @@ export default async function DashboardPage() {
           </div>
         )}
       </div>
+
+      {sharedRecipesWithMeta.length > 0 && (
+        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+          <h2 className="text-xl font-semibold mb-6">Shared With Me</h2>
+          <RecipeListClient recipes={sharedRecipesWithMeta} badgeLabel="Shared with you" />
+        </div>
+      )}
     </div>
   );
 } 

@@ -2,8 +2,9 @@
 import { useState } from "react";
 import RecipeCard from "./RecipeCard";
 
-export default function RecipeListClient({ recipes: initialRecipes }: {
+export default function RecipeListClient({ recipes: initialRecipes, badgeLabel }: {
   recipes: any[];
+  badgeLabel?: string;
 }) {
   const [recipes, setRecipes] = useState(initialRecipes);
 
@@ -28,6 +29,7 @@ export default function RecipeListClient({ recipes: initialRecipes }: {
           canEdit={recipe.canEdit}
           canDelete={recipe.canDelete}
           onDelete={handleDelete}
+          badgeLabel={badgeLabel}
         />
       ))}
     </div>

@@ -42,10 +42,14 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       .where(sql.raw(`${recipes.id.name} IN (${idList})`));
   }
 
-  // Combine owned and shared recipes, filter out those already in the binder
-  const allAddable = [...ownedRecipes, ...sharedRecipes].filter(
-    r => !inBinderIds.includes(r.id)
-  );
+  // Combine owned and shared recipes, filter out those already in the binder, and remove duplicates by ID
+  const allAddableMap = new Map();
+  [...ownedRecipes, ...sharedRecipes].forEach(r => {
+    if (!inBinderIds.includes(r.id)) {
+      allAddableMap.set(r.id, r);
+    }
+  });
+  const allAddable = Array.from(allAddableMap.values());
 
   return NextResponse.json({ recipes: allAddable });
 } 
