@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
 import { getSessionFromCookie } from '@/lib/session-helper';
-import { and, eq } from 'drizzle-orm';
-import { binders } from '@/schema';
+import { and, eq, sql } from 'drizzle-orm';
+import { binders, shared_binders } from '@/schema';
 import CreateRecipeForm from './CreateRecipeForm';
 
 export default async function CreateRecipeInBinderPage({ 
@@ -17,7 +17,7 @@ export default async function CreateRecipeInBinderPage({
     }
 
     const binderId = params.id;
-
+    let binder;
     // Check if the binder exists and belongs to the user
     const binderData = await db
       .select()
@@ -30,11 +30,29 @@ export default async function CreateRecipeInBinderPage({
       )
       .limit(1);
 
-    if (binderData.length === 0) {
-      redirect('/binders');
+    if (binderData.length > 0) {
+      binder = binderData[0];
+    } else {
+      // Check shared_binders for edit/admin permission
+      const shared = await db
+        .select()
+        .from(shared_binders)
+        .where(sql`binder_id = ${binderId} AND shared_with_id = ${session.user.id} AND is_active = true AND (permission = 'edit' OR permission = 'admin')`)
+        .limit(1);
+      if (shared.length === 0) {
+        redirect('/binders');
+      }
+      // Get the binder info for the title
+      const binderInfo = await db
+        .select()
+        .from(binders)
+        .where(eq(binders.id, binderId))
+        .limit(1);
+      if (binderInfo.length === 0) {
+        redirect('/binders');
+      }
+      binder = binderInfo[0];
     }
-
-    const binder = binderData[0];
 
     return (
       <div className="container mx-auto px-4 py-8">
