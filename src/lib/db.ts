@@ -1,7 +1,11 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import * as schema from './schema';
+import * as appSchema from './schema';
+import * as authSchema from '../schema/auth-schema';
 import { type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+
+// Merge schemas
+const schema = { ...appSchema, ...authSchema };
 
 // Use the unpooled connection for drizzle adapter
 let connectionString = process.env.DATABASE_URL_UNPOOLED || '';

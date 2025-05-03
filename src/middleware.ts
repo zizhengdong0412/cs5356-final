@@ -35,10 +35,25 @@ export function middleware(request: NextRequest) {
     return NextResponse.rewrite(newUrl);
   }
 
+  // Handle root path for authenticated users
+  if (pathname === '/' || pathname === '') {
+    // Check if the user has a session token
+    const sessionToken = request.cookies.get('better-auth.session_token')?.value;
+    
+    // If there's a valid session token, redirect to binders
+    if (sessionToken) {
+      const bindersUrl = new URL('/binders', request.url);
+      return NextResponse.redirect(bindersUrl);
+    }
+  }
+
   // Protected routes that require authentication
   if (pathname.startsWith('/dashboard') || 
       pathname.startsWith('/recipes') || 
-      pathname.startsWith('/profile')) {
+      pathname.startsWith('/profile') ||
+      pathname.startsWith('/binders') ||
+      pathname.startsWith('/notes') ||
+      pathname.startsWith('/admin')) {
     
     // Get the session token from cookies
     const sessionToken = request.cookies.get('better-auth.session_token')?.value;
@@ -56,9 +71,13 @@ export function middleware(request: NextRequest) {
 // Configure the middleware to run on auth API routes and protected pages
 export const config = {
   matcher: [
+    '/',
     '/api/auth/:path*',
     '/dashboard/:path*', 
     '/recipes/:path*',
-    '/profile/:path*'
+    '/profile/:path*',
+    '/binders/:path*',
+    '/notes/:path*',
+    '/admin/:path*'
   ],
 }; 

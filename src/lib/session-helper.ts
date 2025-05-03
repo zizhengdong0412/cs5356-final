@@ -1,7 +1,6 @@
-import { eq, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { db } from "./db";
-import { sessions, users } from "./schema";
 
 /**
  * This is a custom session verification helper that bypasses Better Auth's 
@@ -36,44 +35,35 @@ export async function getSessionFromCookie() {
       return null;
     }
     
-    // Query the sessions table directly using the session ID
-    const sessionResults = await db
-      .select()
-      .from(sessions)
-      .where(eq(sessions.id, sessionId))
-      .limit(1);
+    // Use a join query to get both session and user data in one query
+    const results = await db.execute(sql`
+      SELECT 
+        s.id as session_id, 
+        s.user_id, 
+        u.id as user_id, 
+        u.email, 
+        u.name, 
+        u.image
+      FROM sessions s
+      JOIN users u ON s.user_id = u.id
+      WHERE s.id = ${sessionId}
+        AND s.expires_at > NOW()
+      LIMIT 1
+    `);
     
-    if (sessionResults.length === 0) {
+    if (!results[0]) {
       return null;
     }
     
-    const session = sessionResults[0];
-    
-    // Check if the session has expired
-    if (new Date(session.expires_at) < new Date()) {
-      return null;
-    }
-    
-    // Get the user associated with the session
-    const userResults = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, session.user_id))
-      .limit(1);
-    
-    if (userResults.length === 0) {
-      return null;
-    }
-    
-    const user = userResults[0];
+    const data = results[0] as any;
     
     // Return the session data in the format expected by the application
     return {
       user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        image: null,
+        id: data.user_id,
+        email: data.email,
+        name: data.name,
+        image: data.image,
       }
     };
   } catch (error) {
@@ -103,8 +93,14 @@ export async function validateSessionFromCookie() {
     }
     
     // Check if session exists and is valid
-    const sessionResults = await db.execute(sql`
-      SELECT s.*, u.id as user_id, u.email, u.name, u.image
+    const results = await db.execute(sql`
+      SELECT 
+        s.id as session_id, 
+        s.user_id,
+        u.id as user_id, 
+        u.email, 
+        u.name, 
+        u.image
       FROM sessions s
       JOIN users u ON s.user_id = u.id
       WHERE s.id = ${sessionId}
@@ -112,19 +108,19 @@ export async function validateSessionFromCookie() {
       LIMIT 1
     `);
     
-    if (!sessionResults[0]) {
+    if (!results[0]) {
       return { isAuthenticated: false, user: null };
     }
     
-    const sessionData = sessionResults[0] as any;
+    const data = results[0] as any;
     
     return {
       isAuthenticated: true,
       user: {
-        id: sessionData.user_id,
-        email: sessionData.email,
-        name: sessionData.name || null,
-        image: sessionData.image || null
+        id: data.user_id,
+        email: data.email,
+        name: data.name || null,
+        image: data.image || null
       }
     };
   } catch (error) {
@@ -161,4 +157,4 @@ export async function checkClientAuth(): Promise<{ isAuthenticated: boolean; use
     console.error('Error checking client auth:', error);
     return { isAuthenticated: false, user: null };
   }
-} 
+}

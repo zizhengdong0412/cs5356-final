@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { recipes } from '@/lib/schema';
+import { binder_recipes, binders, shared_binders } from '@/schema';
 import { v4 as uuidv4 } from 'uuid';
 import { eq, sql } from 'drizzle-orm';
 import { validateSessionFromCookie } from '@/lib/server-auth-helper';
@@ -41,6 +42,7 @@ const recipeSchema = z.object({
   ]),
   type: z.enum(['personal', 'external']).default('personal'),
   thumbnail: z.string().optional().nullable(),
+  binderId: z.string().optional(), // Optional binder ID to add the recipe to
 });
 
 export async function POST(request: Request) {
@@ -82,13 +84,40 @@ export async function POST(request: Request) {
       cookingTime,
       servings,
       type,
-      thumbnail
+      thumbnail,
+      binderId
     } = validationResult.data;
 
     console.log('Validated recipe data:', validationResult.data); // Log for debugging
 
+    // If a binderId was provided, check permissions
+    if (binderId) {
+      // Check if user is owner of the binder
+      const binderResults = await db
+        .select()
+        .from(binders)
+        .where(eq(binders.id, binderId));
+      let canAdd = false;
+      if (binderResults.length > 0 && binderResults[0].user_id === user.id) {
+        canAdd = true;
+      } else {
+        // Check shared_binders for edit/admin permission
+        const sharedResults = await db
+          .select()
+          .from(shared_binders)
+          .where(sql`binder_id = ${binderId} AND shared_with_id = ${user.id} AND is_active = true AND (permission = 'edit' OR permission = 'admin')`);
+        if (sharedResults.length > 0) {
+          canAdd = true;
+        }
+      }
+      if (!canAdd) {
+        return NextResponse.json({ error: 'You do not have permission to add recipes to this binder' }, { status: 403 });
+      }
+    }
+
     // Create recipe with validated data
     try {
+      // Insert recipe and get the inserted record
       const recipe = await db
         .insert(recipes)
         .values({
@@ -107,6 +136,19 @@ export async function POST(request: Request) {
           thumbnail: thumbnail || null,
         } as any) // Use type assertion to bypass TypeScript error
         .returning();
+      
+      // If a binderId was provided, add the recipe to that binder
+      if (binderId && recipe[0]) {
+        const recipeId = recipe[0].id;
+        
+        // Add recipe to binder
+        await db.insert(binder_recipes).values({
+          binder_id: binderId,
+          recipe_id: recipeId
+        });
+        
+        console.log(`Added recipe ${recipeId} to binder ${binderId}`);
+      }
 
       return NextResponse.json(recipe[0]);
     } catch (dbError) {
