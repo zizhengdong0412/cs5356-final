@@ -17,9 +17,10 @@ interface RecipeProps {
   };
   canEdit?: boolean;
   canDelete?: boolean;
+  onDelete?: (id: string) => void;
 }
 
-export default function RecipeCard({ recipe, canEdit = false, canDelete = false }: RecipeProps) {
+export default function RecipeCard({ recipe, canEdit = false, canDelete = false, onDelete }: RecipeProps) {
   const router = useRouter();
   const [showActions, setShowActions] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -64,7 +65,11 @@ export default function RecipeCard({ recipe, canEdit = false, canDelete = false 
         throw new Error(`Failed to delete recipe: ${response.status}`);
       }
       
-      router.refresh();
+      if (onDelete) {
+        onDelete(recipe.id);
+      } else {
+        router.refresh();
+      }
     } catch (error) {
       console.error('Error deleting recipe:', error);
       alert('Failed to delete recipe');

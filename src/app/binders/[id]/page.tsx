@@ -6,6 +6,7 @@ import { sql } from 'drizzle-orm';
 import BinderActions from './BinderActions';
 import Image from 'next/image';
 import RecipeCard from '@/components/RecipeCard';
+import RecipeListClient from '@/components/RecipeListClient';
 
 export default async function BinderDetailPage({ params }: { params: { id: string } }) {
   const session = await getSessionFromCookie();
@@ -45,7 +46,7 @@ export default async function BinderDetailPage({ params }: { params: { id: strin
   }
 
   // Get recipes in this binder
-  const recipesInBinder = await db.execute(sql`
+  const recipesInBinderData = await db.execute(sql`
     SELECT r.id, r.title, r.description, r.cooking_time, r.servings, r.thumbnail, r.created_at
     FROM recipes r
     JOIN binder_recipes br ON br.recipe_id = r.id
@@ -53,9 +54,26 @@ export default async function BinderDetailPage({ params }: { params: { id: strin
     ORDER BY br.added_at DESC
   `);
 
+  // Compute canEdit and canDelete for each recipe
+  const recipesWithPermissions = recipesInBinderData.map((recipe: any) => ({
+    ...recipe,
+    canEdit: isOwner || (binder.sharedPermission === 'edit' || binder.sharedPermission === 'admin'),
+    canDelete: isOwner || binder.sharedPermission === 'admin',
+  }));
+
   // Determine if user can edit (owner or sharedPermission is edit/admin)
   const canEdit = isOwner || (binder.sharedPermission === 'edit' || binder.sharedPermission === 'admin');
 
+  return <BinderDetailPageClient
+    binder={binder}
+    isOwner={isOwner}
+    canEdit={canEdit}
+    recipesInBinder={recipesWithPermissions}
+    binderId={binderId}
+  />;
+}
+
+function BinderDetailPageClient({ binder, isOwner, canEdit, recipesInBinder, binderId }: any) {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
@@ -80,13 +98,13 @@ export default async function BinderDetailPage({ params }: { params: { id: strin
           {canEdit && (
             <div className="flex space-x-3">
               <Link
-                href={`/binders/${binderId}/add-recipe`}
+                href={`/binders/${binderId}/create-recipe`}
                 className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
               >
                 Create New Recipe
               </Link>
               <Link
-                href={`/binders/${binderId}/add-recipes`}
+                href={`/binders/${binderId}/add-existing-recipes`}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
               >
                 Add Existing Recipes
@@ -104,13 +122,13 @@ export default async function BinderDetailPage({ params }: { params: { id: strin
             {canEdit && (
               <div className="flex justify-center space-x-4">
                 <Link
-                  href={`/binders/${binderId}/add-recipe`}
+                  href={`/binders/${binderId}/create-recipe`}
                   className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
                 >
                   Create New Recipe
                 </Link>
                 <Link
-                  href={`/binders/${binderId}/add-recipes`}
+                  href={`/binders/${binderId}/add-existing-recipes`}
                   className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
                 >
                   Add Existing Recipes
@@ -119,30 +137,13 @@ export default async function BinderDetailPage({ params }: { params: { id: strin
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {recipesInBinder.map((recipe: any) => (
-              <RecipeCard
-                key={recipe.id}
-                recipe={{
-                  id: recipe.id,
-                  title: recipe.title,
-                  description: recipe.description,
-                  cookingTime: recipe.cooking_time,
-                  servings: recipe.servings,
-                  thumbnail: recipe.thumbnail,
-                  createdAt: recipe.created_at
-                }}
-                canEdit={canEdit}
-                canDelete={canEdit && (isOwner || binder.sharedPermission === 'admin')}
-              />
-            ))}
-          </div>
+          <RecipeListClient recipes={recipesInBinder} />
         )}
       </div>
 
       {canEdit && (
         <Link
-          href={`/binders/${binderId}/add-recipe`}
+          href={`/binders/${binderId}/create-recipe`}
           className="fixed bottom-6 right-6 bg-green-600 hover:bg-green-700 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-colors"
           aria-label="Create Recipe"
         >

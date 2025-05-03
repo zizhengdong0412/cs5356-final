@@ -334,7 +334,7 @@ export default function EditBinderPage({ params }: { params: { id: string } }) {
             )}
             <div className="mt-4">
               <Link
-                href={`/binders/${params.id}/add-recipes`}
+                href={`/binders/${params.id}/add-existing-recipes`}
                 className="text-blue-600 hover:text-blue-800 text-sm inline-flex items-center"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">

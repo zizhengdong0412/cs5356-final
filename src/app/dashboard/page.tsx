@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { getSessionFromCookie } from '@/lib/session-helper';
 import { db } from '@/lib/db';
 import { sql } from 'drizzle-orm';
-import RecipeCard from '@/components/RecipeCard';
+import RecipeListClient from '@/components/RecipeListClient';
 
 export default async function DashboardPage() {
   const session = await getSessionFromCookie();
@@ -12,12 +12,19 @@ export default async function DashboardPage() {
   }
 
   // Get user's recipes
-  const userRecipes = await db.execute(sql`
+  const userRecipesData = await db.execute(sql`
     SELECT id, title, description, cooking_time, servings, thumbnail, created_at
     FROM recipes
     WHERE user_id = ${session.user.id}
     ORDER BY created_at DESC
   `);
+
+  // Compute canEdit and canDelete for each recipe
+  const recipesWithPermissions = userRecipesData.map((recipe: any) => ({
+    ...recipe,
+    canEdit: true,
+    canDelete: true,
+  }));
 
   // Check if the user has any binders
   const binderCount = await db.execute(sql`
@@ -59,7 +66,7 @@ export default async function DashboardPage() {
       <div className="bg-white rounded-lg shadow-md p-6 mb-8">
         <h2 className="text-xl font-semibold mb-6">My Recent Recipes</h2>
         
-        {userRecipes.length === 0 ? (
+        {recipesWithPermissions.length === 0 ? (
           <div className="text-center py-10">
             <div className="text-gray-500 mb-4">You haven't created any recipes yet.</div>
             {hasBinders ? (
@@ -70,7 +77,7 @@ export default async function DashboardPage() {
                 Create Your First Recipe
               </Link>
             ) : (
-              <Link 
+              <Link
                 href="/binders/new"
                 className="inline-block bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
               >
@@ -79,27 +86,10 @@ export default async function DashboardPage() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {userRecipes.map((recipe: any) => (
-              <RecipeCard 
-                key={recipe.id}
-                recipe={{
-                  id: recipe.id,
-                  title: recipe.title,
-                  description: recipe.description,
-                  cookingTime: recipe.cooking_time,
-                  servings: recipe.servings,
-                  thumbnail: recipe.thumbnail,
-                  createdAt: recipe.created_at
-                }}
-                canEdit={true}
-                canDelete={true}
-              />
-            ))}
-          </div>
+          <RecipeListClient recipes={recipesWithPermissions} />
         )}
         
-        {userRecipes.length > 0 && (
+        {recipesWithPermissions.length > 0 && (
           <div className="mt-6 text-center">
             <Link href="/recipes" className="text-blue-600 hover:underline">
               View All Recipes

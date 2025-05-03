@@ -289,6 +289,11 @@ export async function DELETE(
     await db.delete(binder_recipes)
       .where(eq(binder_recipes.recipe_id, params.id));
 
+    // Then, delete all references in shared_recipes table
+    await db.execute(sql`
+      DELETE FROM shared_recipes WHERE recipe_id = ${params.id}
+    `);
+
     // Then delete the recipe itself
     await db.delete(recipes)
       .where(eq(recipes.id, params.id));

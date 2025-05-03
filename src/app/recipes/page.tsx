@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm';
 import { recipes, binders } from '@/schema';
 import { sql } from 'drizzle-orm';
 import RecipeCard from '@/components/RecipeCard';
+import RecipeListClient from '@/components/RecipeListClient';
 
 export default async function RecipesPage() {
   const session = await getSessionFromCookie();
@@ -23,11 +24,18 @@ export default async function RecipesPage() {
   const hasBinders = userBinders.length > 0;
 
   // Get all recipes for the current user
-  const userRecipes = await db
+  const userRecipesData = await db
     .select()
     .from(recipes)
     .where(eq(recipes.user_id, session.user.id))
     .orderBy(recipes.created_at);
+
+  // Compute canEdit and canDelete for each recipe
+  const recipesWithPermissions = userRecipesData.map((recipe: any) => ({
+    ...recipe,
+    canEdit: true,
+    canDelete: true,
+  }));
 
   // Get recipes shared with the current user
   const sharedResults = await db.execute(sql`
@@ -40,6 +48,10 @@ export default async function RecipesPage() {
 
   const sharedRecipes = sharedResults as any[];
 
+  return <RecipesPageClient userRecipes={recipesWithPermissions} hasBinders={hasBinders} sharedRecipes={sharedRecipes} />;
+}
+
+function RecipesPageClient({ userRecipes, hasBinders, sharedRecipes }: { userRecipes: any[]; hasBinders: boolean; sharedRecipes: any[] }) {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
@@ -94,37 +106,7 @@ export default async function RecipesPage() {
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {userRecipes.map((recipe) => (
-            <Link 
-              key={recipe.id} 
-              href={`/recipes/${recipe.id}`}
-              className="block bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition"
-            >
-              {recipe.thumbnail && (
-                <div className="aspect-video w-full overflow-hidden">
-                  <img
-                    src={recipe.thumbnail}
-                    alt={recipe.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              )}
-              <div className="p-4">
-                <h2 className="text-xl font-bold mb-2 truncate">{recipe.title}</h2>
-                {recipe.description && (
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                    {recipe.description}
-                  </p>
-                )}
-                <div className="flex justify-between text-sm text-gray-500">
-                  <span>{recipe.cooking_time ? `${recipe.cooking_time} mins` : ''}</span>
-                  <span>{recipe.servings ? `${recipe.servings} servings` : ''}</span>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
+        <RecipeListClient recipes={userRecipes} />
       )}
 
       {/* Shared With Me */}
