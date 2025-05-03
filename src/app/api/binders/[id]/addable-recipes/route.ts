@@ -18,18 +18,25 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     .where(eq(binder_recipes.binder_id, binderId));
   const inBinderIds = inBinder.map(r => r.recipe_id);
 
-  // Get all recipes owned by the user not in the binder
-  const addableRecipes = await db
-    .select()
-    .from(recipes)
-    .where(
-      and(
-        eq(recipes.user_id, session.user.id),
-        inBinderIds.length > 0
-          ? sql`${recipes.id} NOT IN (${sql.join(inBinderIds, ',')})`
-          : undefined
-      )
-    );
+  let addableRecipes;
+  if (inBinderIds.length > 0) {
+    // Inject UUIDs directly as a comma-separated list
+    const idList = inBinderIds.map(id => `'${id}'`).join(',');
+    addableRecipes = await db
+      .select()
+      .from(recipes)
+      .where(
+        and(
+          eq(recipes.user_id, session.user.id),
+          sql.raw(`${recipes.id.name} NOT IN (${idList})`)
+        )
+      );
+  } else {
+    addableRecipes = await db
+      .select()
+      .from(recipes)
+      .where(eq(recipes.user_id, session.user.id));
+  }
 
   return NextResponse.json({ recipes: addableRecipes });
 } 
