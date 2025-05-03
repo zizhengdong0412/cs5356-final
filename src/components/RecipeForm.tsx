@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -36,13 +36,13 @@ export default function RecipeForm({
   onCancel 
 }: RecipeFormProps) {
   const [loading, setLoading] = useState(false);
+  const [currentFile, setCurrentFile] = useState<File | null>(null);
   const [formData, setFormData] = useState<Recipe>(() => ({
     title: '',
     description: '',
     cookingTime: null,
     servings: null,
     notes: '',
-    imageUrl: '',
     sourceUrl: '',
     ingredients: [{ name: '', amount: 0, unit: 'g', notes: '' }],
     instructions: [{ step: 1, text: '', time: undefined }],
@@ -53,10 +53,14 @@ export default function RecipeForm({
     }),
     ...(initialData?.servings !== undefined && {
       servings: Number(initialData.servings) || null
-    })
+    }),
+    // Initialize imageUrl from thumbnail or imageUrl
+    imageUrl: initialData?.thumbnail || initialData?.imageUrl || ''
   }));
   
   const [errors, setErrors] = useState<ValidationErrors>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // Available unit options
   const unitOptions = ['g', 'kg', 'oz', 'lb', 'cup', 'tbsp', 'tsp', 'ml', 'l', 'piece', 'pinch', 'to taste'];
@@ -157,6 +161,59 @@ export default function RecipeForm({
     });
   };
 
+  // Handle image file upload
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Store the current file
+    setCurrentFile(file);
+    setUploadingImage(true);
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+      const res = await fetch('/api/upload-image', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        // Update form data with new image URL
+        setFormData(prev => ({
+          ...prev,
+          imageUrl: data.url
+        }));
+      } else {
+        alert(data.error || 'Failed to upload image');
+        // Reset file input if upload failed
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+        setCurrentFile(null);
+      }
+    } catch (err) {
+      alert('Failed to upload image');
+      // Reset file input if upload failed
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      setCurrentFile(null);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  // Remove image handler
+  const handleRemoveImage = () => {
+    setFormData(prev => ({ ...prev, imageUrl: '' }));
+    setCurrentFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const validateForm = (): boolean => {
     const newErrors: ValidationErrors = {};
     let isValid = true;
@@ -214,16 +271,16 @@ export default function RecipeForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validate form before submission
     if (!validateForm()) {
       return;
     }
-    
     setLoading(true);
-
     try {
-      await onSubmit(formData);
+      const submitData = {
+        ...formData,
+        thumbnail: formData.imageUrl || ''
+      };
+      await onSubmit(submitData);
     } catch (error) {
       console.error('Error submitting recipe:', error);
       alert(error instanceof Error ? error.message : 'Failed to submit recipe');
@@ -431,15 +488,58 @@ export default function RecipeForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="imageUrl">Image URL (Optional)</Label>
-            <Input
-              id="imageUrl"
-              name="imageUrl"
-              value={formData.imageUrl}
-              onChange={handleChange}
-              placeholder="Enter URL for recipe image"
+            <Label htmlFor="imageFile">Recipe Image (Optional)</Label>
+            <input
+              id="imageFile"
+              type="file"
+              accept="image/*"
+              ref={fileInputRef}
+              onChange={handleImageFileChange}
+              className="block"
+              disabled={uploadingImage}
             />
+            {uploadingImage && <p className="text-sm text-gray-500">Uploading...</p>}
+            {formData.imageUrl && (
+              <div className="mt-2">
+                <img 
+                  src={formData.imageUrl} 
+                  alt="Recipe" 
+                  className="w-32 h-32 object-cover rounded"
+                  onError={(e) => {
+                    // If image fails to load, clear it
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    handleRemoveImage();
+                  }}
+                />
+                <div className="flex items-center gap-2 mt-1">
+                  <p className="text-xs text-gray-500">Image preview</p>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleRemoveImage} 
+                    className="text-red-500 border-red-300 hover:text-red-700 hover:border-red-500 ml-2"
+                  >
+                    Remove Image
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
+
+          {!formData.imageUrl && (
+            <div className="space-y-2">
+              <Label htmlFor="imageUrl">Image URL (Optional)</Label>
+              <Input
+                id="imageUrl"
+                name="imageUrl"
+                value={formData.imageUrl}
+                onChange={handleChange}
+                placeholder="Enter URL for recipe image"
+              />
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="sourceUrl">Source URL (Optional)</Label>
